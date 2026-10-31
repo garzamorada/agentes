@@ -8,7 +8,7 @@
         "responseMode": "lastNode",
         "options": {}
       },
-      "id": "0fb1bb15-80e2-489b-ac5c-bc918fceaf19",
+      "id": "e080389f-d76f-4138-be49-66933151d476",
       "name": "Webhook (web)",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
@@ -16,13 +16,13 @@
         0,
         0
       ],
-      "webhookId": "ae40d7f6-adc2-4b74-aa28-be43768587c4"
+      "webhookId": "7d59fa98-eb1f-4fdb-a509-f2518b18a6c9"
     },
     {
       "parameters": {
         "jsCode": "// Pedido de la web: { mensaje, historial: [{rol, texto}], adjunto: {base64, nombre, mime} }\nconst h = $input.first().json.headers || {};\nif ((h['x-api-key'] || '') !== $env.N8N_WEBHOOK_TOKEN) throw new Error('No autorizado: falta o es incorrecto el header X-API-Key');\nconst b = $input.first().json.body || $input.first().json;\nconst msg = String(b.mensaje || b.message || '').trim();\nconst hist = (Array.isArray(b.historial) ? b.historial : []).slice(-8);\nconst histTxt = hist.map(h => `${h.rol === 'usuario' ? 'Usuario' : 'Asistente'}: ${String(h.texto || '').slice(0, 2000)}`).join('\\n\\n');\nconst original = histTxt\n  ? `Conversación previa (contexto; respondé solo el pedido actual):\\n${histTxt}\\n\\nPedido actual del usuario: ${msg}`\n  : msg;\nconst a = b.adjunto;\nconst adjunto = a && a.base64 ? { base64: a.base64, nombre: a.nombre || 'archivo', mime: a.mime || '' } : null;\nconst contexto = histTxt ? `Conversación previa (respondé solo el pedido actual):\n${histTxt}` : '';\nreturn [{ json: { agent: 'orquestador', prompt: msg, contexto, mensaje_original: original, mensaje_usuario: msg, complejidad: 'compleja', adjunto,\n  session_id: b.session_id ? String(b.session_id) : null } }];"
       },
-      "id": "2b32e44b-591b-44e7-a6f5-563c908caba4",
+      "id": "92f63e11-11bc-471d-9299-8c8682903160",
       "name": "Preparar pedido",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -42,7 +42,7 @@
           },
           "conditions": [
             {
-              "id": "b7c1cfa0-2a99-44a4-a685-7fb22eb99286",
+              "id": "4fb7ded6-4059-45c5-83c2-93882e083738",
               "leftValue": "={{ $json.adjunto }}",
               "rightValue": "",
               "operator": {
@@ -56,7 +56,7 @@
         },
         "options": {}
       },
-      "id": "77cb23c9-f66d-49b0-83eb-4a513965122e",
+      "id": "5a8de032-9afb-4e68-9a53-e4ceec7913ae",
       "name": "¿Adjuntó archivo?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
@@ -80,7 +80,7 @@
           "timeout": 120000
         }
       },
-      "id": "61bf285c-cdc8-4beb-92d1-f9b83a6cefd4",
+      "id": "2f813422-245c-4207-8401-64ab98108546",
       "name": "Leer adjunto",
       "type": "@n8n/n8n-nodes-langchain.mcpClient",
       "typeVersion": 1.1,
@@ -93,7 +93,7 @@
       "parameters": {
         "jsCode": "// Suma el texto del adjunto al pedido\nconst pedido = $('Preparar pedido').first().json;\n// Resultado de la herramienta MCP leer_archivo: {archivo, tipo, truncado, texto}\nconst r = $input.first().json;\nconst sc = r.structuredContent;\nconst a = (sc && (sc.result || sc)) || r.content?.[0]?.text || {};\nconst textoAdjunto = `Archivo adjunto \"${a.archivo}\" (${a.tipo}${a.truncado ? ', recortado' : ''}):\\n${a.texto}`;\nreturn [{ json: { ...pedido, adjunto: null, textoAdjunto, prompt: `${pedido.mensaje_original}\\n\\n${textoAdjunto}` } }];"
       },
-      "id": "af443977-2186-435e-8930-3f58dbf0670c",
+      "id": "11f27197-b370-46d0-a834-528988a22d4c",
       "name": "Agregar texto del adjunto",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -114,7 +114,7 @@
           "waitForSubWorkflow": true
         }
       },
-      "id": "5fa2839d-9e88-4fdb-8597-6765d5a06901",
+      "id": "bd1a0774-8916-4b7a-bf19-3cfb7611c4e6",
       "name": "Orquestador: planificar",
       "type": "n8n-nodes-base.executeWorkflow",
       "typeVersion": 1.2,
@@ -127,7 +127,7 @@
       "parameters": {
         "jsCode": "// Convierte el plan JSON del orquestador en un ítem por subtarea.\nconst VALIDOS = [\"agentic_ai\", \"arquitectura\", \"calidad\", \"datos_optimizacion\", \"entrenamiento_inferencia\", \"fisica_robotica\", \"frontend\", \"general\", \"gpu_dev\", \"infra_redes\", \"salud_ciencias\", \"seguridad\", \"vision\", \"visualizacion\"];\nconst original = $('Preparar pedido').first().json.mensaje_original;\nlet adjunto = '';\ntry { adjunto = $('Agregar texto del adjunto').first().json.textoAdjunto || ''; } catch (e) {}\nconst r = $input.first().json;\nlet plan = [];\ntry {\n  const txt = String(r.output || '').replace(/```(json)?/g, '');\n  const m = txt.match(/\\{[\\s\\S]*\\}/);\n  plan = JSON.parse(m ? m[0] : txt).plan || [];\n} catch (e) {}\nplan = plan.filter(p => VALIDOS.includes(p.agente)).slice(0, 3);\nif (!plan.length) plan = [{ agente: 'general', tarea: original, complejidad: 'simple' }];\n// slot: posición entre las subtareas del mismo agente, para repartirlas entre los modelos locales\nconst vistos = {};\n// Documentos e informes con gráficos siempre como \"compleja\" (los modelos locales chicos arman mal los datos)\nconst DOC = /\\b(pdf|word|docx|excel|xlsx|planilla|informe|reporte|gr[aá]fico|markdown|documento)s?\\b/i;\n// Búsquedas y navegación web también (encadenan varias llamadas a herramientas)\nconst WEB = /\\b(busc[aáeé]\\w*|web|internet|naveg\\w*|captur\\w*|screenshot|sitio|p[aá]gina|precio|cotizaci[oó]n|noticia|maps?|mapa|ruta|llegar|colectivo|subte|tren|recorrido|imagen|im[aá]genes|foto|ilustraci[oó]n|logo)s?\\b|https?:\\/\\//i;\nreturn plan.map(p => ({ json: {\n  agent: p.agente,\n  prompt: p.tarea,\n  complejidad: p.complejidad === 'simple' && !DOC.test(`${p.tarea} ${original}`) && !WEB.test(`${p.tarea} ${original}`) ? 'simple' : 'compleja',\n  slot: (vistos[p.agente] = (vistos[p.agente] ?? -1) + 1),\n  session_id: $('Preparar pedido').first().json.session_id || null,\n  contexto: `Pedido original del usuario: ${original}` + (adjunto ? `\\n\\n${adjunto}` : ''),\n} }));"
       },
-      "id": "284d1835-5b92-4a54-8ac1-f3500f6e20ad",
+      "id": "f44aa62d-37c7-465a-89af-6509d446e767",
       "name": "Repartir subtareas",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -156,7 +156,7 @@
           "timeout": 900000
         }
       },
-      "id": "b7da6ea3-d5e7-421b-90b3-5fdc0b9237a5",
+      "id": "0319ff43-fcb5-4f8b-988c-3fbba00ee536",
       "name": "Ejecutar agentes en paralelo",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
@@ -170,7 +170,7 @@
       "parameters": {
         "jsCode": "const original = $('Preparar pedido').first().json.mensaje_original;\nconst res = $input.all().map(i => i.json);\nconst err = r => r.output || (r.error ? `Error: ${r.error.message || JSON.stringify(r.error)}` : 'sin respuesta');\n// Con un solo agente que respondió bien no hace falta sintetizar\nif (res.length === 1 && res[0].ok) {\n  return [{ json: { saltar: true, directo: res[0].output } }];\n}\nconst partes = res.map(r => `### ${r.agent || '?'} (modelo: ${r.model || 'ninguno'})\\nTarea: ${r.tarea || ''}\\n\\n${err(r)}`).join('\\n\\n---\\n\\n');\nreturn [{ json: { saltar: false, agent: 'sintesis', complejidad: 'compleja', prompt: `Pedido original:\\n${original}\\n\\nRespuestas de los agentes:\\n\\n${partes}` } }];"
       },
-      "id": "1a8f416b-a9e1-4bca-bfbf-0cbd478b6695",
+      "id": "1b677374-8144-4f2a-a01a-d12176473e04",
       "name": "Preparar síntesis",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -190,7 +190,7 @@
           },
           "conditions": [
             {
-              "id": "6aa17269-0fe5-4c7c-9a0e-34cbedd6d487",
+              "id": "5c779069-f393-448e-8e0d-78ac10a95ea0",
               "leftValue": "={{ $json.saltar }}",
               "rightValue": "",
               "operator": {
@@ -204,7 +204,7 @@
         },
         "options": {}
       },
-      "id": "465456fb-2bd2-48e5-bbd9-9c9381fdaf40",
+      "id": "fa51a1b4-3b1b-4beb-9c36-cca84bd780b4",
       "name": "¿Hace falta síntesis?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
@@ -225,7 +225,7 @@
           "waitForSubWorkflow": true
         }
       },
-      "id": "ed223215-649a-4075-8d80-d6cb07726748",
+      "id": "1ff32dfa-50c5-4ee8-860a-c8be0b17baab",
       "name": "Orquestador: sintetizar",
       "type": "n8n-nodes-base.executeWorkflow",
       "typeVersion": 1.2,
@@ -238,7 +238,7 @@
       "parameters": {
         "jsCode": "const esp = $('Ejecutar agentes en paralelo').all().map(i => i.json);\nconst j = $json;\nconst final = j.saltar ? j.directo : (j.ok ? j.output : esp.map(e => e.output || '').join('\\n\\n'));\nconst pie = esp.map(e => `${e.nombre || e.agent || '?'} → ${e.model || 'sin modelo'}${e.fallos_previos?.length ? ` (${e.fallos_previos.length} fallback)` : ''}`).join(' · ');\nconst sint = j.saltar ? '' : ` · síntesis → ${j.model || 'n/a'}`;\nconst pp = $('Preparar pedido').first().json;\nconst original = pp.mensaje_usuario || pp.mensaje_original;\nconst titulo = original.length > 90 ? original.slice(0, 87) + '...' : original;\nreturn [{ json: { output: `${final}\\n\\n---\\n_Agentes: ${pie}${sint}_`, titulo: titulo || 'Respuesta' } }];"
       },
-      "id": "72b6c244-37c9-427e-a8fe-7e73ef9f00e8",
+      "id": "b32060be-6e51-423e-bd34-164e3c608593",
       "name": "Respuesta final",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -251,7 +251,7 @@
       "parameters": {
         "jsCode": "// Arma el pedido para el verificador: lo que pidió el usuario + la respuesta final (sin el pie de agentes)\nconst pp = $('Preparar pedido').first().json;\nconst respuesta = String($json.output || '').replace(/\\n+---\\n_Agentes:[\\s\\S]*$/, '');\nlet adjunto = '';\ntry { adjunto = $('Agregar texto del adjunto').first().json.textoAdjunto || ''; } catch (e) {}\nconst pedido = pp.mensaje_usuario || pp.mensaje_original;\nreturn [{ json: {\n  agent: 'verificador',\n  complejidad: 'compleja',\n  session_id: pp.session_id || null,\n  prompt: `PEDIDO DEL USUARIO:\\n${pedido}\\n\\nRESPUESTA A REVISAR:\\n${respuesta}`,\n  // Conversación previa (pedidos de seguimiento como \"agregale gráficos\") y adjunto, para entender qué se pidió\n  contexto: [pp.mensaje_original !== pedido ? pp.mensaje_original : '', adjunto ? adjunto.slice(0, 3000) : ''].filter(Boolean).join('\\n\\n'),\n} }];\n"
       },
-      "id": "7c0482ab-093d-4059-bb92-0f793a4ae699",
+      "id": "be37669e-9555-43e4-8b84-da3fa1e15e4c",
       "name": "Preparar verificación",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -272,7 +272,7 @@
           "waitForSubWorkflow": true
         }
       },
-      "id": "fa896b81-6003-4a7e-8a82-354db6a69028",
+      "id": "30a67cca-39b5-4626-b140-77222c72b53d",
       "name": "Orquestador: verificar",
       "type": "n8n-nodes-base.executeWorkflow",
       "typeVersion": 1.2,
@@ -285,7 +285,7 @@
       "parameters": {
         "jsCode": "// Lee el veredicto del verificador. Si falta algo, arma el pedido de corrección para el agente principal.\n// Si el verificador falla o no devuelve JSON, se da por cumplido (la revisión nunca bloquea la respuesta).\nconst v = $input.first().json;\nlet r = { cumple: true, faltantes: [], instruccion: '' };\ntry {\n  const m = String(v.output || '').replace(/```(json)?/g, '').match(/\\{[\\s\\S]*\\}/);\n  if (m) r = { ...r, ...JSON.parse(m[0]) };\n} catch (e) {}\nconst faltantes = (Array.isArray(r.faltantes) ? r.faltantes : []).map(String).filter(f => f.trim()).slice(0, 6);\nconst cumple = r.cumple !== false || !faltantes.length;\n\nconst pp = $('Preparar pedido').first().json;\nconst previa = String($('Respuesta final').first().json.output || '').replace(/\\n+---\\n_Agentes:[\\s\\S]*$/, '');\n// Corrige el agente que hizo la parte principal (el primero que respondió bien)\nconst esp = $('Ejecutar agentes en paralelo').all().map(i => i.json).filter(e => e.ok);\nconst agente = (esp[0] && esp[0].agent) || 'general';\nreturn [{ json: {\n  cumple, faltantes, instruccion: String(r.instruccion || ''), verificador: v.model || null,\n  agent: agente, complejidad: 'compleja', fase: 'correccion', session_id: pp.session_id || null,\n  prompt: `Tu respuesta anterior NO cumple todo lo que pidió el usuario.\nFalta:\n${faltantes.map(f => `- ${f}`).join('\\n')}\n${r.instruccion ? `Cómo completarlo: ${r.instruccion}\\n` : ''}\nRespuesta anterior:\n${previa}\n\nDevolvé la respuesta COMPLETA y corregida (no solo lo que falta). Si faltan archivos, gráficos, diagramas o capturas,\ngeneralos con las herramientas y copiá los links nuevos tal cual.`,\n  contexto: `Pedido original del usuario: ${pp.mensaje_original}`,\n} }];\n"
       },
-      "id": "201e18f7-d68a-469c-a0b9-8a819f341f3e",
+      "id": "2a5d97ea-a08c-485d-aae5-60e81db73ed2",
       "name": "Evaluar verificación",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -305,7 +305,7 @@
           },
           "conditions": [
             {
-              "id": "b9d07a60-6b8f-4bcf-8684-c1269f7ffe1e",
+              "id": "9e156c39-7490-4a54-b66f-3063a7bc9fcf",
               "leftValue": "={{ $json.cumple }}",
               "rightValue": "",
               "operator": {
@@ -319,7 +319,7 @@
         },
         "options": {}
       },
-      "id": "502bba65-b62d-47f2-bc96-9e20f70b8223",
+      "id": "e32771a7-74dc-4835-8bf8-f0a44c463348",
       "name": "¿Cumple todo?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
@@ -348,7 +348,7 @@
           "timeout": 900000
         }
       },
-      "id": "75025e90-dce6-454b-a948-b2bbe6cc0038",
+      "id": "544ec26e-3c28-4f6c-ba93-740f2c83e68c",
       "name": "Completar lo que falta",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
@@ -362,7 +362,7 @@
       "parameters": {
         "jsCode": "// Respuesta final después de la revisión: la corregida si hizo falta completar algo, si no la original\nconst base = $('Respuesta final').first().json;\nconst ev = $('Evaluar verificación').first().json;\nconst pie = (String(base.output).match(/\\n+---\\n_Agentes:[\\s\\S]*$/) || [''])[0];\nlet output = base.output;\nconst verificacion = { cumple: ev.cumple, faltantes: ev.faltantes, corregido: false, modelo: ev.verificador };\nif (!ev.cumple) {\n  const c = $json;  // lo que devolvió el agente al completar\n  if (c.ok && String(c.output || '').trim()) {\n    output = String(c.output).trim() + (pie ? pie.replace(/_\\s*$/, ` · revisión → completó ${c.agent} con ${c.model}_`) : '');\n    verificacion.corregido = true;\n  } else {\n    output = `${base.output}\\n\\n> ⚠️ La revisión indica que podría faltar: ${ev.faltantes.join('; ')}`;\n  }\n}\nreturn [{ json: { output, titulo: base.titulo, verificacion } }];\n"
       },
-      "id": "fef84c47-7220-4acb-bc99-3afb97ceee98",
+      "id": "2898cca9-dcfb-4868-8c70-812bfb7f9362",
       "name": "Respuesta revisada",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -391,7 +391,7 @@
           "timeout": 60000
         }
       },
-      "id": "1086d484-c2ce-4f97-9ff4-fae7c763afe5",
+      "id": "aafc5ced-ae19-4663-86f5-169ef3fa3e0e",
       "name": "Publicar respuesta HTML",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
@@ -405,7 +405,7 @@
       "parameters": {
         "jsCode": "// Respuesta JSON para la web\nconst base = $('Respuesta revisada').first().json;\nconst esp = $('Ejecutar agentes en paralelo').all().map(i => i.json);\nreturn [{ json: {\n  ok: true,\n  respuesta: base.output,\n  titulo: base.titulo,\n  html_url: $json.html_url || null,\n  verificacion: base.verificacion || null,\n  agentes: esp.map(e => ({ agente: e.agent || '?', nombre: e.nombre || null, modelo: e.model || null, proveedor: e.proveedor || null, ok: !!e.ok })),\n} }];"
       },
-      "id": "727e8572-4b6d-4247-9306-4850600292b0",
+      "id": "fe2d1808-aff1-4616-b07c-59d4f8affb2f",
       "name": "Respuesta para la web",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -420,7 +420,7 @@
         "width": 560,
         "height": 300
       },
-      "id": "c4a2d154-1efd-4e2a-9186-e79605406ee7",
+      "id": "bc892914-a590-43c4-b0db-5328115b1df4",
       "name": "Nota",
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,

@@ -605,6 +605,43 @@ orq_web = wf('NVIDIA · Orquestador (webhook para la web)', web_nodes, conn(
 (OUT / 'orquestador_webhook.json').write_text(json.dumps(orq_web, ensure_ascii=False, indent=2), encoding='utf-8')
 print('orquestador_webhook.json', len(orq_web['nodes']), 'nodos')
 
+# ============ Proxy de LLM para el orquestador de código (Cline) ============
+# orquestador-web le pide a este webhook una respuesta de un modelo NVIDIA con los mensajes y herramientas de Cline.
+# Así la API key de NVIDIA sigue guardada solo en la credencial de n8n.
+PROXY_VALIDAR = '''// Pedido: { cuerpo: { model, messages, tools?, temperature?, max_tokens? } }  (header X-API-Key = N8N_WEBHOOK_TOKEN)
+const h = $input.first().json.headers || {};
+if ((h['x-api-key'] || '') !== $env.N8N_WEBHOOK_TOKEN) throw new Error('No autorizado: falta o es incorrecto el header X-API-Key');
+const c = ($input.first().json.body || {}).cuerpo || {};
+if (!c.model || String(c.model).startsWith('ollama/') || !Array.isArray(c.messages) || !c.messages.length) {
+  throw new Error('Pedido inválido: hacen falta model (NVIDIA) y messages');
+}
+// Solo se reenvían los campos conocidos de la API de chat
+const cuerpo = { model: c.model, messages: c.messages, stream: false,
+  temperature: c.temperature ?? 0.2, max_tokens: Math.min(Number(c.max_tokens) || 8192, 16384) };
+if (Array.isArray(c.tools) && c.tools.length) { cuerpo.tools = c.tools; if (c.tool_choice) cuerpo.tool_choice = c.tool_choice; }
+return [{ json: { cuerpo } }];'''
+PROXY_RESPUESTA = '''// Devuelve el estado HTTP y el cuerpo de la API de NVIDIA (también en errores: 429, 5xx...)
+const r = $input.first().json;
+if (r.error && r.statusCode === undefined) return [{ json: { status: 599, body: { error: String(r.error.message || r.error) } } }];
+return [{ json: { status: r.statusCode, body: r.body } }];'''
+proxy = wf('NVIDIA · Proxy de LLM (orquestador de código)', [
+    node('Webhook (proxy LLM)', 'n8n-nodes-base.webhook', 2, [0, 0],
+         {'httpMethod': 'POST', 'path': 'llm-proxy', 'responseMode': 'lastNode', 'options': {}}, webhookId=nid()),
+    code('Validar pedido', PROXY_VALIDAR, [220, 0], each=False),
+    node('API de NVIDIA', 'n8n-nodes-base.httpRequest', 4.2, [440, 0],
+         {'method': 'POST', 'url': '={{ ($env.NVIDIA_BASE_URL || "https://integrate.api.nvidia.com/v1") + "/chat/completions" }}',
+          'authentication': 'predefinedCredentialType', 'nodeCredentialType': 'openAiApi',
+          'sendBody': True, 'specifyBody': 'json', 'jsonBody': '={{ JSON.stringify($json.cuerpo) }}',
+          'options': {'timeout': 180000, 'response': {'response': {'fullResponse': True, 'neverError': True}}}},
+         credentials={'openAiApi': IDS['nvidia_cred']}, onError='continueRegularOutput'),
+    code('Respuesta', PROXY_RESPUESTA, [660, 0], each=False),
+    note('## Proxy de LLM\nLo usa orquestador-web (modelo `orquestador-codigo` para Cline): reenvía mensajes y herramientas '
+         'a la API de NVIDIA con la credencial de n8n, sin exponer la API key. Requiere el header X-API-Key (N8N_WEBHOOK_TOKEN).',
+         [0, -260], w=480, h=200),
+], conn(('Webhook (proxy LLM)', 0, 'Validar pedido'), ('Validar pedido', 0, 'API de NVIDIA'), ('API de NVIDIA', 0, 'Respuesta')))
+(OUT / 'proxy_llm.json').write_text(json.dumps(proxy, ensure_ascii=False, indent=2), encoding='utf-8')
+print('proxy_llm.json', len(proxy['nodes']), 'nodos')
+
 for fn, w in (('agente_especialista.json', sub), ('orquestador.json', orq)):
     (OUT / fn).write_text(json.dumps(w, ensure_ascii=False, indent=2), encoding='utf-8')
     print(fn, len(w['nodes']), 'nodos')

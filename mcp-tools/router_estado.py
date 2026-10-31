@@ -97,9 +97,12 @@ def fallo(modelo, error):
         pausa = min(60000 * 2 ** (s['strikes'] - 1), 15 * 60000)        # 1, 2, 4, 8, 15 min
     elif re.search(r'404|410|not found|does not exist|deprecated|no longer', err, re.I):
         tipo, pausa = 'no_disponible', 24 * 3600000
-    elif re.search(r'5\d\d|timeout|timed out|terminated|aborted|ECONN|socket|overloaded|unavailable|bad gateway', err, re.I):
-        # "terminated": la conexión se cortó después de minutos sin respuesta (modelo colgado)
-        tipo, pausa = 'caido', 2 * 60000
+    elif re.search(r'5\d\d|timeout|timed out|terminated|aborted|offline|ECONN|socket|overloaded|unavailable|bad gateway', err, re.I):
+        # "terminated": la conexión se cortó después de minutos sin respuesta (modelo colgado).
+        # La pausa crece si sigue fallando: 2, 4, 8, 16 y hasta 30 min (un modelo caído no hace esperar en cada pedido)
+        tipo = 'caido'
+        s['strikes'] = s.get('strikes', 0) + 1
+        pausa = min(2 * 60000 * 2 ** (s['strikes'] - 1), 30 * 60000)
     if pausa:
         s['cooldownUntil'] = _ahora() + pausa
     s['lastError'] = {'at': datetime.datetime.now(datetime.timezone.utc).isoformat(timespec='milliseconds').replace('+00:00', 'Z'),

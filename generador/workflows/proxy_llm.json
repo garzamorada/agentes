@@ -1,0 +1,136 @@
+{
+  "name": "NVIDIA · Proxy de LLM (orquestador de código)",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "llm-proxy",
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "id": "7e876112-7b3c-464a-a0ba-0e0401115dd1",
+      "name": "Webhook (proxy LLM)",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        0,
+        0
+      ],
+      "webhookId": "19955de8-428d-4700-9b9e-9783afd03d50"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Pedido: { cuerpo: { model, messages, tools?, temperature?, max_tokens? } }  (header X-API-Key = N8N_WEBHOOK_TOKEN)\nconst h = $input.first().json.headers || {};\nif ((h['x-api-key'] || '') !== $env.N8N_WEBHOOK_TOKEN) throw new Error('No autorizado: falta o es incorrecto el header X-API-Key');\nconst c = ($input.first().json.body || {}).cuerpo || {};\nif (!c.model || String(c.model).startsWith('ollama/') || !Array.isArray(c.messages) || !c.messages.length) {\n  throw new Error('Pedido inválido: hacen falta model (NVIDIA) y messages');\n}\n// Solo se reenvían los campos conocidos de la API de chat\nconst cuerpo = { model: c.model, messages: c.messages, stream: false,\n  temperature: c.temperature ?? 0.2, max_tokens: Math.min(Number(c.max_tokens) || 8192, 16384) };\nif (Array.isArray(c.tools) && c.tools.length) { cuerpo.tools = c.tools; if (c.tool_choice) cuerpo.tool_choice = c.tool_choice; }\nreturn [{ json: { cuerpo } }];"
+      },
+      "id": "c4046a2e-005a-4908-9c38-a70d9041d7e5",
+      "name": "Validar pedido",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        220,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ ($env.NVIDIA_BASE_URL || \"https://integrate.api.nvidia.com/v1\") + \"/chat/completions\" }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "openAiApi",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.cuerpo) }}",
+        "options": {
+          "timeout": 180000,
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true
+            }
+          }
+        }
+      },
+      "id": "d96b1726-4e63-470c-a7f2-119e705b5e93",
+      "name": "API de NVIDIA",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        440,
+        0
+      ],
+      "credentials": {
+        "openAiApi": {
+          "id": "PnIocs172tEX8ebB",
+          "name": "OpenAI account"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Devuelve el estado HTTP y el cuerpo de la API de NVIDIA (también en errores: 429, 5xx...)\nconst r = $input.first().json;\nif (r.error && r.statusCode === undefined) return [{ json: { status: 599, body: { error: String(r.error.message || r.error) } } }];\nreturn [{ json: { status: r.statusCode, body: r.body } }];"
+      },
+      "id": "9b54e207-05b6-4fca-8b9a-5f035c127eae",
+      "name": "Respuesta",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        660,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## Proxy de LLM\nLo usa orquestador-web (modelo `orquestador-codigo` para Cline): reenvía mensajes y herramientas a la API de NVIDIA con la credencial de n8n, sin exponer la API key. Requiere el header X-API-Key (N8N_WEBHOOK_TOKEN).",
+        "width": 480,
+        "height": 200
+      },
+      "id": "df2b3bc4-898d-433f-8033-af1178200873",
+      "name": "Nota",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        0,
+        -260
+      ]
+    }
+  ],
+  "connections": {
+    "Webhook (proxy LLM)": {
+      "main": [
+        [
+          {
+            "node": "Validar pedido",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validar pedido": {
+      "main": [
+        [
+          {
+            "node": "API de NVIDIA",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "API de NVIDIA": {
+      "main": [
+        [
+          {
+            "node": "Respuesta",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

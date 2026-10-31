@@ -156,7 +156,7 @@ services:
   # Web local del orquestador (FastAPI + React) con el registro de chats
   orquestador-web:
     build: ./orquestador-web
-    image: orquestador-web:1.1
+    image: orquestador-web:1.3
     container_name: orquestador-web
     mem_limit: ${WEB_MEM:-512m}
     restart: unless-stopped
@@ -164,12 +164,22 @@ services:
       - "${BIND_IP:-127.0.0.1}:${WEB_PORT:-8095}:8095"
     volumes:
       - ./orquestador-web/data:/data
+      # Agentes (generador/agentes/*.json): el orquestador de código para Cline arma su equipo con ellos
+      - ./generador/agentes:/agentes:ro
     environment:
       - WEB_ACCESS_TOKEN=${WEB_ACCESS_TOKEN:?Falta WEB_ACCESS_TOKEN en .env}
+      # API compatible con OpenAI (/v1) para Cline
+      - CLINE_API_KEY=${CLINE_API_KEY:?Falta CLINE_API_KEY en .env}
       - WEB_EVENTOS_TOKEN=${WEB_EVENTOS_TOKEN}
       - N8N_WEBHOOK_TOKEN=${N8N_WEBHOOK_TOKEN}
       - N8N_WEBHOOK=${N8N_INTERNAL_URL:-http://n8n-container:5678}/webhook/orquestador
       - N8N_ESTADO=${N8N_INTERNAL_URL:-http://n8n-container:5678}/webhook/estado-modelos
+      # Orquestador de código para Cline: especialistas, proxy de LLM (la API key de NVIDIA queda en n8n) y router compartido
+      - N8N_AGENTE=${N8N_INTERNAL_URL:-http://n8n-container:5678}/webhook/agente-especialista
+      - N8N_LLM_PROXY=${N8N_INTERNAL_URL:-http://n8n-container:5678}/webhook/llm-proxy
+      - ROUTER_URL=${MCP_ROUTER_URL:-http://mcp-tools:8092/router}
+      - MCP_API_KEY=${MCP_API_KEY}
+      - CLINE_EJECUTORES=${CLINE_EJECUTORES:-deepseek-ai/deepseek-v4.1-flash,minimaxai/minimax-m3.1-flash,nvidia/nemotron-3-ultra-550b-a55b,poolside/laguna-xs-2.1}
       - OLLAMA_URL=${OLLAMA_URL:-http://ollama:11434}
     depends_on:
       - n8n

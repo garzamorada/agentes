@@ -10,6 +10,7 @@ propias por **MCP**, generación de documentos e imágenes, y una **web local** 
 - [Modelos elegidos y por qué](#modelos-elegidos-y-por-qué)
 - [Requisitos del sistema](#requisitos-del-sistema)
 - [Instalación](#instalación)
+- [Usar desde VS Code (Cline)](#usar-desde-vs-code-cline)
 - [Seguridad](#seguridad)
 - [Mantenimiento](#mantenimiento)
 
@@ -100,6 +101,10 @@ Cada tipo de agente ve solo las herramientas que necesita (perfiles `planificado
 - Botón **Modelos**: modelos locales y remotos, su uso, pausas y errores.
 - Muestra imágenes y links de descarga de los archivos generados; cada respuesta queda también como HTML.
 
+### Desde VS Code con Cline
+El orquestador se puede usar como "modelo" de la extensión [Cline](https://marketplace.visualstudio.com/items?itemName=saoudrizwan.claude-dev)
+gracias a una API compatible con OpenAI en `http://localhost:8095/v1` (ver [Usar desde VS Code (Cline)](#usar-desde-vs-code-cline)).
+
 ---
 
 ## Arquitectura
@@ -129,7 +134,7 @@ flowchart LR
 | `imagen-ia` | Imágenes con IA en la GPU (volumen `agentes_imagen_modelos`) | 8094 | 6 GB |
 | `mcp-tools` | Servidor MCP (Python): herramientas, navegador Chromium/Chrome, estado del router | 8092 | 3 GB |
 | `doc-service` | Genera HTML, PDF, Word, Excel y MD; sirve `/files` | 8090 | 1 GB |
-| `orquestador-web` | Web local (FastAPI + React, chats en SQLite) | 8095 | 512 MB |
+| `orquestador-web` | Web local (FastAPI + React, chats en SQLite) y API compatible con OpenAI para Cline (`/v1`) | 8095 | 512 MB |
 
 **GPU compartida**: Ollama e imagen-ia usan la misma GPU. Antes de cargar FLUX, imagen-ia le pide a Ollama que
 libere sus modelos y, tras 3 minutos sin uso, libera la VRAM para que Ollama la vuelva a usar.
@@ -155,6 +160,7 @@ libere sus modelos y, tras 3 minutos sin uso, libera la VRAM para que Ollama la 
 | NVIDIA · Agente especialista (router de LLM) | Elige el modelo, usa las herramientas MCP, memoria por chat, avisa el progreso. Webhooks `agente-especialista` y `estado-modelos` |
 | NVIDIA · Orquestador (webhook para la web) | `POST /webhook/orquestador`: planifica, reparte en paralelo, sintetiza y verifica |
 | NVIDIA · Orquestador multi-agente | El mismo orquestador para el chat de n8n (Open chat) |
+| NVIDIA · Proxy de LLM (orquestador de código) | `POST /webhook/llm-proxy`: reenvía mensajes y herramientas de Cline a la API de NVIDIA con la credencial de n8n (lo usa `orquestador-codigo`) |
 
 Para cambiarlos: editar `generador/agentes/*.json` o `generador/build/*` y correr `python generador/build/gen.py`; los JSON quedan en
 `generador/workflows/` y se importan pegándolos en n8n (revisar que el selector de modelo, la memoria y el nodo MCP
@@ -317,6 +323,104 @@ docker compose up -d --build orquestador-web
 
 ---
 
+## Usar desde VS Code (Cline)
+
+`orquestador-web` expone una API compatible con OpenAI (`GET /v1/models` y `POST /v1/chat/completions`, con
+streaming) para usar el orquestador y sus agentes desde la extensión **Cline** de VS Code. Hay dos modelos:
+
+| Model ID | Qué hace | Edita archivos |
+|---|---|---|
+| `orquestador` | El orquestador de siempre: planifica, reparte entre agentes, sintetiza y verifica. Responde con texto (explicaciones, revisiones, código para copiar) | No |
+| `orquestador-codigo` | Un equipo de especialistas arma el plan y un modelo ejecutor trabaja **dentro del proyecto** con las herramientas de Cline: lee, crea y edita archivos y ejecuta comandos (con tu aprobación) | Sí |
+
+### Configuración
+
+1. Copiar la clave de Cline del `.env` (no la pegues en ningún otro lado):
+
+   ```bash
+   grep CLINE_API_KEY .env
+   ```
+
+2. En VS Code, abrir Cline y entrar a la configuración (ícono de engranaje) → **API Configuration**.
+3. Completar:
+
+   | Campo | Valor |
+   |---|---|
+   | API Provider | `OpenAI Compatible` |
+   | Base URL | `http://localhost:8095/v1` |
+   | API Key | el valor de `CLINE_API_KEY` |
+   | Model ID | `orquestador-codigo` (edita el proyecto) u `orquestador` (solo responde) |
+
+4. En **Model Configuration** (si aparece): desmarcar **Supports Images** (las imágenes no se envían al orquestador),
+   y dejar un **Context Window** amplio (por ejemplo 128000) para que Cline no recorte la conversación.
+5. Guardar (**Done**) y escribir una tarea en el chat de Cline. Para probar la conexión sin VS Code:
+
+   ```bash
+   curl -H "Authorization: Bearer <CLINE_API_KEY>" http://localhost:8095/v1/models
+   ```
+
+Si VS Code corre en otra PC, hay que publicar el puerto de la web fuera de `127.0.0.1` (`BIND_IP` en `.env`) y usar
+la IP de esta PC en la Base URL; hacelo solo en una red de confianza.
+
+### Cómo funciona `orquestador-codigo` (edita el proyecto)
+
+```mermaid
+flowchart LR
+  C[Cline en VS Code] -- "cada turno: conversación + herramientas" --> W[orquestador-web /v1]
+  W -- "1 vez por tarea" --> P[Orquestador n8n: elige especialistas]
+  P --> E1[Especialista líder<br/>ej. Nick Fury]
+  P --> E2[Especialista de apoyo<br/>ej. Coulson]
+  E1 & E2 -- plan técnico con sus skills --> W
+  W -- "conversación + guía del equipo" --> X[Ejecutor<br/>deepseek / minimax / ultra / laguna]
+  X -- "read_file, replace_in_file, write_to_file, execute_command..." --> C
+  C -- "ejecuta con tu aprobación y devuelve el resultado" --> W
+```
+
+1. **Equipo (al empezar la tarea):** el planificador del orquestador elige hasta 2 especialistas que programan
+   (Nick Fury, Black Widow, Stiuso, Coulson...). Cada uno arma un **plan técnico** con sus skills: archivos a tocar,
+   pasos, decisiones de diseño, pruebas y riesgos. Se guarda para toda la tarea.
+   Si el planificador no responde en 45 s, el equipo se elige por palabras de la tarea (React/CSS/UI → Black Widow,
+   seguridad → Stiuso, tests → Coulson; Nick Fury lidera por defecto) y cada especialista tiene hasta 150 s para su plan.
+2. **Ejecutor (cada turno):** recibe la conversación completa de Cline (con sus herramientas) más la **guía del
+   equipo**: los planes, las reglas de funcionamiento y las reglas de seguridad de los especialistas y del ejecutor
+   (leer antes de editar, cambios mínimos, nada destructivo, sin secretos en el código, verificar antes de entregar).
+   Responde con una herramienta de Cline; Cline la ejecuta **pidiéndote aprobación** (salvo lo que tengas en
+   auto-approve) y le devuelve el resultado. El ciclo sigue hasta `attempt_completion`.
+   Si el modelo responde sin una herramienta de Cline (o en su propio formato), se le pide una vez que reintente, y
+   se limpian los tokens internos que algunos modelos dejan en el texto.
+3. **Modelos:** el ejecutor prueba en orden `CLINE_EJECUTORES` (por defecto deepseek-v4.1-flash, minimax-m3.1-flash,
+   nemotron-3-ultra y laguna-xs-2.1) con el **router compartido** (cupos y pausas). Los modelos de NVIDIA se llaman por
+   el workflow **"NVIDIA · Proxy de LLM"** de n8n (`/webhook/llm-proxy`), así la API key sigue guardada solo en n8n.
+4. **Registro:** cada tarea es un chat **"Cline (código): …"** en la web, con el equipo, los planes y cada herramienta
+   que usó el ejecutor, turno por turno. En Cline, el progreso se ve como razonamiento.
+
+Recomendaciones: dejá **sin auto-approve** los comandos (`execute_command`) y revisá cada diff antes de aceptarlo;
+para tareas grandes, empezá en modo **Plan** y pasá a **Act** cuando el plan te convenza.
+
+### Cómo funciona `orquestador` (solo responde)
+
+- Cada tarea de Cline es un chat de la web llamado **"Cline: …"**: queda en el historial de http://localhost:8095,
+  con el progreso, y los agentes recuerdan los mensajes anteriores de esa tarea.
+- Se envía el pedido (la tarea o la respuesta que le escribís a Cline), los archivos que menciones con **@**
+  (por ejemplo `@/src/app.py`), el proyecto abierto y los archivos visibles. El resto del contexto que arma Cline
+  (lista de archivos, instrucciones de sus herramientas) no se envía.
+- Mientras trabajan los agentes, Cline muestra el progreso (plan, agentes, modelos y herramientas) como razonamiento.
+- La respuesta vuelve como **entrega de la tarea** (`attempt_completion`) en modo **Act**, o como **respuesta del plan**
+  (`plan_mode_respond`) en modo **Plan**; funciona con las herramientas en XML de Cline y con tool calling nativo.
+- Podés seguir la conversación respondiendo en Cline: el pedido nuevo sigue en el mismo chat.
+
+### Limitaciones
+
+- **`orquestador`** no edita archivos ni ejecuta comandos: entrega el código en la respuesta. Para que revise código,
+  mencioná los archivos con **@**. Para editar, usá `orquestador-codigo`.
+- **`orquestador-codigo`**: el primer turno de cada tarea tarda más (el equipo arma su plan, de 30 s a algunos minutos);
+  los siguientes, lo que tarde el modelo ejecutor. Los modelos locales (Ollama) no se usan como ejecutores: el prompt
+  de Cline es demasiado largo para el contexto que entra en 12 GB de VRAM.
+- Las respuestas tardan lo que tarda el orquestador (de segundos a varios minutos según los agentes y modelos).
+- Un pedido a la vez por tarea: si mandás otro mientras sigue el anterior, la API responde 409.
+
+---
+
 ## Seguridad
 
 - Todos los puertos escuchan solo en `127.0.0.1` (`BIND_IP` en `.env`).
@@ -331,6 +435,7 @@ docker compose up -d --build orquestador-web
 | doc-service (`POST /documento`, `/imagen`) | `DOC_SERVICE_API_KEY` | header `X-API-Key` (las descargas `/files` quedan libres en localhost para abrir los links) |
 | orquestador-web (`/api/*`) | `WEB_ACCESS_TOKEN` | la interfaz la pide al entrar y la manda en `X-API-Key` |
 | orquestador-web (`/api/eventos`) | `WEB_EVENTOS_TOKEN` | header `X-API-Key` (lo usan n8n y el MCP) |
+| orquestador-web (`/v1/*`, API para Cline) | `CLINE_API_KEY` | `Authorization: Bearer` (lo pone Cline como API Key) |
 
 - n8n lee claves y URLs con `$env` (`N8N_BLOCK_ENV_ACCESS_IN_NODE=false`): no quedan escritas en los workflows.
   Contra: cualquier workflow de esta instancia puede leer esas variables.
