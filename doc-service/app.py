@@ -28,7 +28,7 @@ from fastapi import Depends, FastAPI, Header, HTTPException  # noqa: E402
 import secrets  # noqa: E402
 from fastapi.responses import FileResponse, RedirectResponse  # noqa: E402
 from openpyxl import Workbook  # noqa: E402
-from openpyxl.chart import BarChart, LineChart, PieChart, Reference  # noqa: E402
+from openpyxl.chart import AreaChart, BarChart, DoughnutChart, LineChart, PieChart, Reference  # noqa: E402
 from openpyxl.drawing.image import Image as XLImage  # noqa: E402
 from openpyxl.styles import Font, PatternFill  # noqa: E402
 from openpyxl.utils import get_column_letter  # noqa: E402
@@ -155,6 +155,8 @@ def _graficos_desde_tabla(md, titulo):
 
 
 def _graficos(valor):
+    if isinstance(valor, dict):
+        valor = [valor]  # un solo gráfico
     try:
         gs = _lista(valor, [])
     except json.JSONDecodeError:
@@ -174,23 +176,47 @@ def _graficos(valor):
             except ValueError as e:
                 raise HTTPException(400, str(e))
             continue
+        tipo = str(g.get('tipo', 'bar')).lower().strip()
+        tipo = TIPOS.get(tipo, tipo)
+        if tipo not in TIPOS_VALIDOS:
+            tipo = 'bar'
         series = g.get('series') or []
         if not series and 'valores' in g:
             series = [{'nombre': g.get('titulo') or 'Serie', 'valores': g['valores']}]
         series = [{'nombre': str(s.get('nombre', f'Serie {i + 1}')),
-                   'valores': [float(v) if v not in (None, '') else 0.0 for v in s.get('valores', [])]}
+                   'valores': [_num(v) for v in s.get('valores', [])]}
                   for i, s in enumerate(series) if isinstance(s, dict)]
         etiquetas = [str(e) for e in g.get('etiquetas') or g.get('labels') or []]
+        if tipo == 'hist' and series and not etiquetas:
+            etiquetas = ['']  # el histograma solo necesita los valores
         if not series or not etiquetas:
             raise HTTPException(400, 'Cada gráfico necesita "etiquetas" y "series" (o "valores").')
-        tipo = str(g.get('tipo', 'bar')).lower()
-        tipo = {'barras': 'bar', 'barra': 'bar', 'columnas': 'bar', 'lineas': 'line', 'línea': 'line',
-                'linea': 'line', 'torta': 'pie', 'circular': 'pie', 'pastel': 'pie'}.get(tipo, tipo)
-        if tipo not in ('bar', 'line', 'pie'):
-            tipo = 'bar'
+        colores = [str(c) for c in (g.get('colores') or []) if re.match(r'^#?[0-9a-fA-F]{6}$|^[a-z]+$', str(c))]
         salida.append({'tipo': tipo, 'titulo': str(g.get('titulo', '')), 'etiquetas': etiquetas, 'series': series,
-                       'eje_x': str(g.get('eje_x', '')), 'eje_y': str(g.get('eje_y', ''))})
+                       'eje_x': str(g.get('eje_x', '')), 'eje_y': str(g.get('eje_y', '')),
+                       'mostrar_valores': bool(g.get('mostrar_valores')), 'unidad': str(g.get('unidad', ''))[:12],
+                       'colores': ['#' + c.lstrip('#') if re.match(r'^#?[0-9a-fA-F]{6}$', c) else c for c in colores]})
     return salida
+
+
+# Sinónimos en español → tipo interno
+TIPOS = {'barras': 'bar', 'barra': 'bar', 'columnas': 'bar', 'barras_horizontales': 'barh', 'horizontal': 'barh',
+         'barras_apiladas': 'stacked', 'apiladas': 'stacked', 'apilado': 'stacked',
+         'lineas': 'line', 'línea': 'line', 'linea': 'line', 'líneas': 'line', 'area': 'area', 'área': 'area', 'areas': 'area',
+         'torta': 'pie', 'circular': 'pie', 'pastel': 'pie', 'dona': 'donut', 'anillo': 'donut', 'rosca': 'donut',
+         'dispersion': 'scatter', 'dispersión': 'scatter', 'puntos': 'scatter',
+         'histograma': 'hist', 'distribucion': 'hist', 'distribución': 'hist',
+         'mapa_calor': 'heatmap', 'mapa_de_calor': 'heatmap', 'calor': 'heatmap', 'matriz': 'heatmap'}
+TIPOS_VALIDOS = ('bar', 'barh', 'stacked', 'line', 'area', 'pie', 'donut', 'scatter', 'hist', 'heatmap')
+
+
+def _num(v):
+    if v in (None, ''):
+        return 0.0
+    try:
+        return float(v)
+    except (TypeError, ValueError):
+        return float(re.sub(r'[^0-9.\-]', '', str(v).replace(',', '.')) or 0)
 
 
 def _slug(texto):
@@ -200,34 +226,89 @@ def _slug(texto):
 
 
 # ---------------- gráficos ----------------
+# Tipos con gráfico nativo en Excel; el resto (dispersión, histograma, mapa de calor, diagramas) va como imagen
+EXCEL_NATIVO = {'bar': BarChart, 'barh': BarChart, 'stacked': BarChart, 'line': LineChart, 'area': AreaChart,
+                'pie': PieChart, 'donut': DoughnutChart}
+
 
 def _figura(g):
     if g['tipo'] == 'diagrama':
         return diagramas.render(g)
-    fig, ax = plt.subplots(figsize=(7.5, 4.2), dpi=110)
-    if g['tipo'] == 'pie':
+    tipo = g['tipo']
+    paleta = (g.get('colores') or []) + PALETA
+    unidad = g.get('unidad', '')
+    fmt = (lambda v: f'{v:,.0f}{unidad}'.replace(',', '.') if abs(v) >= 100 else f'{v:g}{unidad}')
+    alto = 4.2 if tipo != 'barh' else max(3.2, 0.42 * len(g['etiquetas']) + 1.2)
+    fig, ax = plt.subplots(figsize=(7.5, alto), dpi=110)
+    x = list(range(len(g['etiquetas'])))
+    n = len(g['series'])
+    if tipo in ('pie', 'donut'):
         s = g['series'][0]
-        ax.pie(s['valores'], labels=g['etiquetas'], autopct='%1.1f%%', startangle=90,
-               colors=PALETA[:len(g['etiquetas'])], wedgeprops={'linewidth': 1, 'edgecolor': 'white'})
+        ax.pie(s['valores'], labels=g['etiquetas'], autopct='%1.1f%%', startangle=90, pctdistance=0.78 if tipo == 'donut' else 0.6,
+               colors=paleta[:len(g['etiquetas'])],
+               wedgeprops={'linewidth': 1, 'edgecolor': 'white', **({'width': 0.42} if tipo == 'donut' else {})})
         ax.axis('equal')
-    else:
-        x = range(len(g['etiquetas']))
-        n = len(g['series'])
-        ancho = 0.8 / n
+    elif tipo == 'heatmap':
+        datos = [s['valores'] + [0.0] * (len(x) - len(s['valores'])) for s in g['series']]
+        im = ax.imshow(datos, cmap='YlGnBu', aspect='auto')
+        ax.set_xticks(x, g['etiquetas'], rotation=30 if len(x) > 6 else 0, ha='right' if len(x) > 6 else 'center')
+        ax.set_yticks(range(n), [s['nombre'] for s in g['series']])
+        if g.get('mostrar_valores') or len(x) * n <= 60:
+            alto_v = max(max(f) for f in datos) or 1
+            for i, fila in enumerate(datos):
+                for j, v in enumerate(fila):
+                    ax.text(j, i, fmt(v), ha='center', va='center', fontsize=8, color='white' if v > alto_v * 0.6 else '#1f2937')
+        fig.colorbar(im, ax=ax, fraction=0.035, pad=0.02)
+    elif tipo == 'hist':
         for i, s in enumerate(g['series']):
-            color = PALETA[i % len(PALETA)]
-            if g['tipo'] == 'bar':
-                ax.bar([p + (i - (n - 1) / 2) * ancho for p in x], s['valores'], ancho, label=s['nombre'], color=color)
-            else:
-                ax.plot(list(x), s['valores'], marker='o', linewidth=2, label=s['nombre'], color=color)
-        ax.set_xticks(list(x))
-        ax.set_xticklabels(g['etiquetas'], rotation=30 if len(g['etiquetas']) > 6 else 0, ha='right' if len(g['etiquetas']) > 6 else 'center')
+            ax.hist(s['valores'], bins='auto', alpha=0.75 if n > 1 else 1, label=s['nombre'], color=paleta[i % len(paleta)],
+                    edgecolor='white')
         ax.grid(axis='y', alpha=0.3)
+    elif tipo == 'scatter':
+        xs = [_num(e) for e in g['etiquetas']]
+        for i, s in enumerate(g['series']):
+            ax.scatter(xs[:len(s['valores'])], s['valores'], s=46, alpha=0.85, label=s['nombre'], color=paleta[i % len(paleta)])
+        ax.grid(alpha=0.3)
+    else:
+        ancho = 0.8 / n if tipo in ('bar', 'barh') else 0.65
+        base = [0.0] * len(x)
+        for i, s in enumerate(g['series']):
+            color = paleta[i % len(paleta)]
+            vals = s['valores'] + [0.0] * (len(x) - len(s['valores']))
+            if tipo == 'bar':
+                barras = ax.bar([p + (i - (n - 1) / 2) * ancho for p in x], vals, ancho, label=s['nombre'], color=color)
+            elif tipo == 'barh':
+                barras = ax.barh([p + (i - (n - 1) / 2) * ancho for p in x], vals, ancho, label=s['nombre'], color=color)
+            elif tipo == 'stacked':
+                barras = ax.bar(x, vals, ancho, bottom=base, label=s['nombre'], color=color)
+                base = [b + v for b, v in zip(base, vals)]
+            elif tipo == 'area':
+                ax.fill_between(x, vals, alpha=0.35, color=color)
+                ax.plot(x, vals, linewidth=2, label=s['nombre'], color=color)
+                barras = None
+            else:
+                ax.plot(x, vals, marker='o', linewidth=2, label=s['nombre'], color=color)
+                barras = None
+                if g.get('mostrar_valores'):
+                    for xi, v in zip(x, vals):
+                        ax.annotate(fmt(v), (xi, v), textcoords='offset points', xytext=(0, 6), ha='center', fontsize=8)
+            if barras is not None and g.get('mostrar_valores'):
+                ax.bar_label(barras, labels=[fmt(v) for v in vals], fontsize=8, padding=2,
+                             label_type='center' if tipo == 'stacked' else 'edge')
+        if tipo == 'barh':
+            ax.set_yticks(x, g['etiquetas'])
+            ax.invert_yaxis()
+            ax.grid(axis='x', alpha=0.3)
+        else:
+            ax.set_xticks(x)
+            ax.set_xticklabels(g['etiquetas'], rotation=30 if len(x) > 6 else 0, ha='right' if len(x) > 6 else 'center')
+            ax.grid(axis='y', alpha=0.3)
+    if tipo not in ('pie', 'donut', 'heatmap'):
         ax.spines[['top', 'right']].set_visible(False)
         if g.get('eje_x'):
-            ax.set_xlabel(g['eje_x'])
+            (ax.set_ylabel if tipo == 'barh' else ax.set_xlabel)(g['eje_x'])
         if g.get('eje_y'):
-            ax.set_ylabel(g['eje_y'])
+            (ax.set_xlabel if tipo == 'barh' else ax.set_ylabel)(g['eje_y'])
         if n > 1:
             ax.legend(frameon=False)
     if g['titulo']:
@@ -381,11 +462,11 @@ def _xlsx(titulo, md, graficos, ruta):
         hoja_datos(wb.create_sheet(f'Tabla {n}'), filas)
 
     for n, g in enumerate(graficos, 1):
-        if g['tipo'] == 'diagrama':
-            ws = wb.create_sheet(f'Diagrama {n}')
-            ws['A1'] = g['titulo'] or f'Diagrama {n}'
+        if g['tipo'] not in EXCEL_NATIVO:
+            ws = wb.create_sheet(f'{"Diagrama" if g["tipo"] == "diagrama" else "Gráfico"} {n}')
+            ws['A1'] = g['titulo'] or f'{"Diagrama" if g["tipo"] == "diagrama" else "Gráfico"} {n}'
             ws['A1'].font = Font(bold=True, size=13)
-            img = XLImage(io.BytesIO(diagramas.render(g)[1]))
+            img = XLImage(io.BytesIO(_figura(g)[1]))
             escala = min(1.0, 900 / img.width)
             img.width, img.height = img.width * escala, img.height * escala
             ws.add_image(img, 'A3')
@@ -395,16 +476,19 @@ def _xlsx(titulo, md, graficos, ruta):
         for k, et in enumerate(g['etiquetas']):
             filas.append([et] + [s['valores'][k] if k < len(s['valores']) else None for s in g['series']])
         hoja_datos(ws, filas)
-        cls = {'bar': BarChart, 'line': LineChart, 'pie': PieChart}[g['tipo']]
-        ch = cls()
+        ch = EXCEL_NATIVO[g['tipo']]()
+        if g['tipo'] == 'barh':
+            ch.type = 'bar'
+        elif g['tipo'] == 'stacked':
+            ch.grouping, ch.overlap = 'stacked', 100
         ch.title = g['titulo'] or f'Gráfico {n}'
         ch.height, ch.width = 9, 16
-        ultima_col = 2 if g['tipo'] == 'pie' else 1 + len(g['series'])
+        ultima_col = 2 if g['tipo'] in ('pie', 'donut') else 1 + len(g['series'])
         datos = Reference(ws, min_col=2, max_col=ultima_col, min_row=1, max_row=len(filas))
         cats = Reference(ws, min_col=1, min_row=2, max_row=len(filas))
         ch.add_data(datos, titles_from_data=True)
         ch.set_categories(cats)
-        if g['tipo'] != 'pie':
+        if g['tipo'] not in ('pie', 'donut'):
             ch.y_axis.title = g['eje_y'] or None
             ch.x_axis.title = g['eje_x'] or None
         ws.add_chart(ch, f'{get_column_letter(len(filas[0]) + 2)}2')
@@ -490,6 +574,26 @@ def _html(titulo, md, svgs, descargas, para_pdf=False):
 <title>{htmllib.escape(titulo)}</title><style>{CSS}{CSS_PDF if para_pdf else ""}</style></head><body><div class="wrap">
 <header><h1>{htmllib.escape(titulo)}</h1><div class="meta">Generado el {fecha} por los agentes de n8n</div></header>
 {barra}{nav}<main>{cuerpo}</main></div></body></html>"""
+
+
+@app.post('/imagen', dependencies=[Depends(requiere_clave)])
+def imagen(pedido: dict):
+    """Un gráfico o diagrama suelto → PNG y/o SVG. Body: {grafico: {...}, formatos: "png,svg", nombre: "..."}."""
+    g = pedido.get('grafico') or pedido.get('diagrama') or {k: v for k, v in pedido.items() if k not in ('formatos', 'nombre')}
+    graficos = _graficos(g if not isinstance(g, str) else g)
+    if not graficos:
+        raise HTTPException(400, 'Falta "grafico": {"tipo": "bar|line|pie|...", "etiquetas": [...], "series": [...]} o un diagrama.')
+    fmts = [f.strip().lower() for f in str(pedido.get('formatos') or 'png,svg').split(',') if f.strip().lower() in ('png', 'svg')] or ['png']
+    did = datetime.datetime.now().strftime('%Y%m%d-%H%M%S-') + uuid.uuid4().hex[:6]
+    carpeta = DATA / did
+    carpeta.mkdir(parents=True)
+    base = _slug(str(pedido.get('nombre') or graficos[0].get('titulo') or 'grafico'))
+    svg, png = _figura(graficos[0])
+    archivos = []
+    for f in fmts:
+        (carpeta / f'{base}.{f}').write_bytes(png if f == 'png' else (svg.encode('utf-8') if isinstance(svg, str) else svg))
+        archivos.append({'formato': f, 'nombre': f'{base}.{f}', 'url': f'{PUBLIC}/files/{did}/{base}.{f}'})
+    return {'id': did, 'tipo': graficos[0]['tipo'], 'titulo': graficos[0].get('titulo', ''), 'archivos': archivos}
 
 
 @app.post('/documento', dependencies=[Depends(requiere_clave)])

@@ -24,6 +24,7 @@ import basicas
 import lectura
 import navegador as nav
 import selenium_nav
+import imagenes
 
 DOC_SERVICE = os.environ.get('DOC_SERVICE', 'http://doc-service:8090/documento')
 DOC_SERVICE_API_KEY = os.environ.get('DOC_SERVICE_API_KEY', '')
@@ -65,7 +66,8 @@ async def _avisar(evento: dict):
 def _resumen_args(nombre: str, args: dict) -> str:
     claves = {'calculadora': ['expresion'], 'buscar_web': ['consulta'], 'navegador': ['motor', 'accion', 'url', 'objetivo', 'texto', 'campos'],
               'leer_url': ['url'], 'convertir_unidades': ['valor', 'de', 'a'], 'generar_documento': ['titulo', 'formatos'],
-              'fecha_hora': [], 'tabla': ['formato']}.get(nombre, list(args)[:2])
+              'fecha_hora': [], 'tabla': ['formato'], 'crear_grafico': ['formatos'], 'crear_diagrama': ['formatos'],
+              'crear_imagen': ['titulo'], 'editar_imagen': ['operacion', 'imagenes']}.get(nombre, list(args)[:2])
     partes = [str(args[k])[:60] for k in claves if args.get(k) not in (None, '', False)]
     return ', '.join(partes)
 
@@ -193,6 +195,83 @@ async def generar_documento(titulo: str, contenido_md: str, formatos: str = 'htm
     links = '\n'.join(f'- [{a["nombre"]}]({a["url"]})' for a in d['archivos'] if a['formato'] != 'png')
     return (f'Documento generado ({d.get("graficos", 0)} gráficos, {d.get("tablas", 0)} tablas). '
             f'Copiá estos links tal cual en tu respuesta:\n{links}')
+
+
+# ---------- gráficos e imágenes ----------
+async def _imagen_doc_service(grafico, formatos: str, nombre: str) -> str:
+    """Pide a doc-service un gráfico o diagrama suelto (PNG/SVG) y devuelve los links."""
+    if isinstance(grafico, str):
+        try:
+            grafico = json.loads(grafico)
+        except json.JSONDecodeError as e:
+            return f'El JSON no es válido ({e}). Revisá comillas y corchetes.'
+    try:
+        async with httpx.AsyncClient(timeout=90) as c:
+            r = await c.post(DOC_SERVICE.rsplit('/', 1)[0] + '/imagen', headers={'X-API-Key': DOC_SERVICE_API_KEY},
+                             json={'grafico': grafico, 'formatos': formatos or 'png,svg', 'nombre': nombre})
+        d = r.json()
+    except (httpx.HTTPError, ValueError) as e:
+        return f'Error al generar la imagen: {e}. Probá de nuevo.'
+    if r.status_code >= 400:
+        return f'Error: {str(d.get("detail") or d)[:400]}. Corregí los datos y volvé a intentar.'
+    png = next((a['url'] for a in d['archivos'] if a['formato'] == 'png'), d['archivos'][0]['url'])
+    links = '\n'.join(f'- [{a["nombre"]}]({a["url"]})' for a in d['archivos'])
+    return (f'{"Diagrama" if d["tipo"] == "diagrama" else "Gráfico"} "{d.get("titulo") or nombre}" generado.\n'
+            f'Mostralo en tu respuesta con: ![{d.get("titulo") or "gráfico"}]({png})\nDescargas:\n{links}')
+
+
+@mcp.tool()
+async def crear_grafico(grafico_json: str, formatos: str = 'png,svg', nombre: str = '') -> str:
+    """Crea un gráfico suelto (imagen PNG y SVG) para mostrar en la respuesta. Para gráficos DENTRO de un documento
+    usá generar_documento con graficos_json.
+    grafico_json: {"tipo": "...", "titulo": "...", "etiquetas": [...], "series": [{"nombre": "...", "valores": [...]}],
+      "eje_x": "...", "eje_y": "...", "unidad": "%", "mostrar_valores": true, "colores": ["#76b900", ...]}
+    tipos: barras | barras_horizontales | apiladas | linea | area | torta | dona | dispersion (etiquetas = valores X
+      numéricos) | histograma (solo "valores") | mapa_calor (cada serie es una fila).
+    Una sola serie: podés usar "valores": [...] en lugar de "series"."""
+    return await _imagen_doc_service(grafico_json, formatos, nombre)
+
+
+@mcp.tool()
+async def crear_diagrama(diagrama_json: str, formatos: str = 'png,svg', nombre: str = '') -> str:
+    """Crea un diagrama visual suelto (flujo, proceso, organigrama, arquitectura, mapa conceptual) en PNG y SVG.
+    Nunca uses Mermaid ni árboles ASCII: usá esto.
+    diagrama_json: {"titulo": "...", "direccion": "TB|LR",
+      "nodos": [{"id": "a", "texto": "Inicio", "forma": "circulo|recuadro|globo|elipse|rombo|nota|cilindro|hexagono"}],
+      "flechas": [{"de": "a", "a": "b", "texto": "opcional", "estilo": "punteada|gruesa|linea"}]}"""
+    if isinstance(diagrama_json, str):
+        try:
+            diagrama_json = json.loads(diagrama_json)
+        except json.JSONDecodeError as e:
+            return f'El JSON no es válido ({e}).'
+    if isinstance(diagrama_json, dict):
+        diagrama_json = {'tipo': 'diagrama', **diagrama_json}
+    return await _imagen_doc_service(diagrama_json, formatos, nombre)
+
+
+@mcp.tool()
+def crear_imagen(titulo: str, subtitulo: str = '', ancho: int = 1200, alto: int = 630, color1: str = '#0f172a',
+                 color2: str = '#76b900', color_texto: str = '#ffffff', estilo: str = 'degradado') -> str:
+    """Crea una imagen con texto (sin IA): portada, banner, placa para redes, encabezado de presentación.
+    estilo: "degradado" (color1 → color2), "diagonal" o "liso". Tamaños típicos: 1200x630 (redes/link),
+    1920x1080 (presentación), 1080x1080 (cuadrada), 1500x500 (banner).
+    No genera fotos ni ilustraciones."""
+    return imagenes.crear(titulo, subtitulo, ancho, alto, color1, color2, color_texto, estilo)['resultado']
+
+
+@mcp.tool()
+async def editar_imagen(imagenes_urls: str, operacion: str, parametros: str = '') -> str:
+    """Edita imágenes: capturas del navegador, gráficos generados o imágenes públicas por URL.
+    imagenes_urls: URL de la imagen (para "collage", varias separadas por coma o lista JSON).
+    operacion y parametros (JSON):
+    - "redimensionar": {"ancho": 800} y/o {"alto": 600} (mantiene la proporción si das uno solo)
+    - "recortar": {"x": 0, "y": 0, "ancho": 500, "alto": 300} o {"forma": "cuadrado"}
+    - "texto": {"texto": "...", "posicion": "abajo|arriba|centro", "tamano": 40, "color": "#fff", "fondo": true}
+    - "collage": {"columnas": 2, "tamano_celda": 480, "separacion": 12, "fondo": "#ffffff"}
+    - "convertir": {"formato": "png|jpg|webp"}   - "rotar": {"grados": 90}   - "grises": {}
+    - "borde": {"grosor": 12, "color": "#ffffff"}
+    Todas aceptan "formato" (png, jpg, webp) y "nombre" para el archivo de salida."""
+    return (await imagenes.editar(imagenes_urls, operacion, parametros))['resultado']
 
 
 # ---------- web ----------

@@ -50,6 +50,8 @@ const CONFIG = {
     // Revisión final: modelos rápidos primero (ultra tardó >100 s en revisar, 30/10/2026)
     verificador:              ['nvidia/nemotron-3.5-lightning-30b-a3b', 'deepseek-ai/deepseek-v4.1-flash', 'minimaxai/minimax-m3.1-flash', 'nvidia/nemotron-3-ultra-550b-a55b'],
     sintesis:                 ['nvidia/nemotron-3-ultra-550b-a55b', 'deepseek-ai/deepseek-v4.1-flash', 'mistralai/mistral-large-4-1t-a52b', 'nvidia/nemotron-3.5-lightning-30b-a3b'],
+    // Gráficos e imágenes: modelos rápidos y buenos armando JSON
+    visualizacion:            ['nvidia/nemotron-3.5-lightning-30b-a3b', 'deepseek-ai/deepseek-v4.1-flash', 'minimaxai/minimax-m3.1-flash', 'nvidia/nemotron-3-ultra-550b-a55b'],
     agentic_ai:               ['nvidia/nemotron-3-ultra-550b-a55b', 'minimaxai/minimax-m3.1-flash', 'deepseek-ai/deepseek-v4.1-flash', 'nvidia/nemotron-3.5-lightning-30b-a3b'],
     fisica_robotica:          ['nvidia/nemotron-3-ultra-550b-a55b', 'nvidia/nemotron-3.5-super-vl-120b-a12b', 'deepseek-ai/deepseek-v4.1-flash', 'nvidia/nemotron-3-nano-omni-30b-a3b-reasoning'],
     vision:                   ['nvidia/nemotron-3.5-super-vl-120b-a12b', 'meta/muse-glimmer-30b', 'z-ai/glm-5.3-flash', 'nvidia/nemotron-3-nano-omni-30b-a3b-reasoning'],

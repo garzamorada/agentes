@@ -54,6 +54,21 @@ catalog = {
         'skills': [f'{sid} — {d}' for c in cats for sid, d in skills[c]]}
     for k, (n, a, cats) in AGENTS.items()
 }
+# Skills propias del proyecto (no son de NVIDIA): visualización con las herramientas del MCP
+catalog['visualizacion'] = {
+    'nombre': 'Agente de gráficos e imágenes',
+    'alcance': 'gráficos de datos, diagramas, portadas y banners, edición de imágenes y capturas, infografías y tableros visuales',
+    'propias': True,
+    'skills': [
+        'grafico-elegir-tipo — Elegir el gráfico según la pregunta: comparar, evolución, partes de un total, relación, distribución o grilla',
+        'grafico-crear — Gráfico PNG/SVG con crear_grafico: barras, horizontales, apiladas, línea, área, torta, dona, dispersión, histograma, mapa de calor',
+        'grafico-desde-datos — Graficar datos de un adjunto, una tabla del usuario o una página web (navegador → extraer tablas), citando la fuente',
+        'diagrama-crear — Flujos, procesos, organigramas, arquitecturas y mapas conceptuales con crear_diagrama (nunca Mermaid ni ASCII)',
+        'imagen-portada — Portadas, banners y placas para redes con crear_imagen (tamaños y colores a medida)',
+        'imagen-editar — Redimensionar, recortar, agregar texto, collage, convertir, rotar, grises y borde con editar_imagen',
+        'infografia-documento — Informes visuales: varios gráficos y diagramas en un PDF, Word, Excel o HTML con generar_documento',
+    ],
+}
 catalog['general'] = {'nombre': 'Agente general', 'skills': [],
                       'alcance': 'tareas simples que no requieren skills de NVIDIA: cálculos, conversiones, fechas, leer o resumir PDF/Excel/CSV/web, armar tablas o planillas'}
 
@@ -101,6 +116,8 @@ Reglas:
 - Elegí el agente cuya lista de skills contiene las skills que resuelven el pedido (por ejemplo, Jetson → fisica_robotica).
 - Todo lo que mencione productos, herramientas o skills de NVIDIA va a un agente especialista, NUNCA a "general".
 - "general" es solo para partes que no necesitan skills de NVIDIA (cálculos, fechas, conversiones, archivos, tablas).
+- Gráficos, diagramas, portadas, banners, infografías o editar imágenes y capturas → "visualizacion". Si además hay que
+  conseguir los datos (de la web o de un archivo), que lo haga el mismo agente en la misma tarea.
 - Si el pedido tiene partes de distinto tipo, separalas en subtareas distintas para que corran en paralelo.
 - Usá el mínimo de subtareas necesario. Si el pedido es simple y de un solo tipo, una sola.
 - Cubrí TODO lo pedido: cada pregunta, dato, cantidad y entregable (formatos de archivo, gráficos, diagramas, capturas)
@@ -130,6 +147,22 @@ Un link a un archivo cuenta como entregado: no podés abrirlo.
 Respondé SOLO con JSON válido, sin texto extra:
 {"cumple":true|false,"faltantes":["<lo que falta, concreto>"],"instruccion":"<qué tiene que hacer el agente para completarlo>"}
 Si cumple, devolvé {"cumple":true,"faltantes":[],"instruccion":""}.`;
+} else if (agent === 'visualizacion') {
+  const a = AGENTES[agent];
+  systemPrompt = `Sos el ${a.nombre} de un equipo de agentes. Tu especialidad: ${a.alcance}.
+
+Tus skills (propias del proyecto). Formato: id — descripción.
+${a.skills.join('\\n')}
+
+${HERRAMIENTAS}
+
+Cómo trabajar:
+1. Conseguí datos reales antes de graficar: del pedido, del adjunto o de la web (navegador con accion="extraer" objetivo="tablas").
+   Nunca inventes números. Si faltan datos, decilo y pedilos.
+2. Elegí el tipo de gráfico con la guía de visualización y armá un JSON correcto (etiquetas y valores de igual largo).
+3. Mostrá cada imagen en la respuesta con ![título](url) y agregá una o dos líneas que expliquen qué muestra.
+4. Si piden un archivo (PDF, Word, Excel), poné los gráficos dentro con generar_documento (graficos_json) en vez de sueltos.
+Respondé en español.`;
 } else if (agent === 'general') {
   systemPrompt = `Sos el Agente general de un equipo de agentes. Resolvés tareas simples de forma directa y breve, en español.
 
@@ -368,7 +401,7 @@ const textoAdjunto = `Archivo adjunto "${a.archivo}" (${a.tipo}${a.truncado ? ',
 return [{ json: { ...pedido, adjunto: null, textoAdjunto, prompt: `${pedido.mensaje_original}\\n\\n${textoAdjunto}` } }];'''
 
 PARSE = '''// Convierte el plan JSON del orquestador en un ítem por subtarea.
-const VALIDOS = ['general','agentic_ai','fisica_robotica','vision','entrenamiento_inferencia','datos_optimizacion','gpu_dev','infra_redes','salud_ciencias'];
+const VALIDOS = ['general','visualizacion','agentic_ai','fisica_robotica','vision','entrenamiento_inferencia','datos_optimizacion','gpu_dev','infra_redes','salud_ciencias'];
 const original = $('Preparar pedido').first().json.mensaje_original;
 let adjunto = '';
 try { adjunto = $('Agregar texto del adjunto').first().json.textoAdjunto || ''; } catch (e) {}
