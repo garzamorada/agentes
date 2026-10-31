@@ -20,7 +20,11 @@ al de "Generar documento" y al navegador web.
 | `leer_archivo` | Archivo en base64 → texto (adjuntos del chat; lo usa el orquestador) |
 | `generar_documento` | HTML, PDF, Word, Excel y MD con gráficos y diagramas (llama a **doc-service**) |
 | `buscar_web` | Búsqueda web (DuckDuckGo, respaldo Bing) |
-| `navegador` | Chromium real: abrir, leer, clic, escribir, tecla, desplazar, captura, atrás, cerrar |
+| `navegador` | Chromium real: abrir, leer, clic, escribir, **completar** (formularios de varios campos), **extraer** (BeautifulSoup: tablas, listas, enlaces, títulos, campos, metadatos o selector CSS), tecla, desplazar, captura, atrás, cerrar. Dos motores: `playwright` (por defecto) y `selenium` (respaldo) |
+| `crear_grafico` | Gráfico PNG/SVG: barras, horizontales, apiladas, línea, área, torta, dona, dispersión, histograma, mapa de calor (lo dibuja doc-service) |
+| `crear_diagrama` | Diagramas visuales (flujos, organigramas, arquitecturas) en PNG/SVG |
+| `crear_imagen` | Portadas, banners y placas con texto (Pillow, sin IA) |
+| `editar_imagen` | Redimensionar, recortar, texto, collage, convertir, rotar, grises, borde |
 
 ## Reglas de uso
 
@@ -36,11 +40,11 @@ workflows de n8n la copia en el prompt de los agentes. Si la cambiás, reconstru
   - `planificador`: solo fecha_hora (orquestador y síntesis, para que planifiquen y no resuelvan la tarea).
   - `adjuntos`: solo leer_archivo.
 
-## Seguridad del navegador y de leer_url
+## Seguridad del navegador, leer_url y editar_imagen
 
 - Solo `http`/`https` y sitios públicos: bloquea localhost, IPs privadas y los contenedores de la red Docker
-  (también en redirecciones y en cada recurso que carga la página).
-- No escribe en campos de contraseña, tarjeta, CBU/CVU, tokens, etc. No descarga archivos. No resuelve CAPTCHAs.
+  (también en redirecciones y en cada recurso que carga la página; en Selenium vía Chrome DevTools `Network.setBlockedURLs`).
+- No escribe (ni con `escribir` ni con `completar`) en campos de contraseña, tarjeta, CBU/CVU, tokens, etc. No descarga archivos. No resuelve CAPTCHAs.
 - Las capturas se guardan en `documentos_generados/web-.../` y las sirve doc-service (`http://localhost:8090/files/...`).
 
 ## Levantar / actualizar

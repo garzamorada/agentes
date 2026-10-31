@@ -6,7 +6,8 @@ generador de documentos y una web local con el registro de chats.
 | Carpeta | Qué es | Puerto |
 |---|---|---|
 | `n8n/n8n_data` | Datos de n8n: workflows, credenciales (cifradas con la clave de `config`), historial | http://localhost:5678 |
-| `mcp-tools` | Servidor MCP (Python) con todas las herramientas de los agentes + navegador Chromium | http://localhost:8092/mcp |
+| `mcp-tools` | Servidor MCP (Python) con todas las herramientas: cálculo, archivos, web (Playwright + Selenium), gráficos e imágenes | http://localhost:8092/mcp |
+| `ollama` (contenedor) | Modelos locales con la GPU NVIDIA; los modelos están en el volumen de Docker `agentes_ollama` | http://localhost:11434 |
 | `doc-service` | Genera HTML, PDF, Word, Excel y MD con gráficos y diagramas | http://localhost:8090 |
 | `orquestador-web` | Web local (FastAPI + React): chats, progreso en vivo, modelos | http://localhost:8095 |
 | `documentos_generados` | Archivos que generan los agentes (y capturas del navegador) | `/files/...` de doc-service |
@@ -38,8 +39,15 @@ docker compose up -d --build orquestador-web
 
 ## Ollama
 
-Corre fuera de Docker (programa de Windows); n8n lo usa en `http://192.168.65.254:11434`
-(la IP del host vista desde Docker, IPv4; se configura en `OLLAMA_URL`). Los modelos están en `%USERPROFILE%\.ollama\models`.
+Corre en el contenedor `ollama` con la GPU (requiere Docker Desktop con soporte NVIDIA). n8n y la web lo usan en
+`http://ollama:11434` (credencial "Ollama account" de n8n y `OLLAMA_URL`). Los modelos están en el volumen
+`agentes_ollama` (más rápido que una carpeta de Windows). Comandos útiles:
+
+```bash
+docker exec ollama ollama list
+docker exec ollama ollama pull <modelo>
+docker exec ollama ollama ps
+```
 
 ## Seguridad
 
@@ -57,7 +65,7 @@ Corre fuera de Docker (programa de Windows); n8n lo usa en `http://192.168.65.25
 - n8n lee claves y URLs con `$env` (`N8N_BLOCK_ENV_ACCESS_IN_NODE=false`): no quedan escritas en los workflows.
   Contra: cualquier workflow de esta instancia puede leer esas variables.
 - La API key de NVIDIA está cifrada dentro de n8n (credencial "OpenAI account") con `N8N_ENCRYPTION_KEY`.
-- Ollama no tiene autenticación: si lo exponés fuera de la PC, protegelo aparte.
+- Ollama no tiene autenticación: escucha solo en `127.0.0.1` y en la red interna de Docker; no lo expongas fuera de la PC.
 
 ## Workflows de n8n
 

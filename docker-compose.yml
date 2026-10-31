@@ -1,13 +1,14 @@
 # Agentes: n8n (orquestador + agentes), herramientas MCP, generador de documentos y web local.
 # Configuración y claves: .env (plantilla: .env.default)
+# Cada servicio tiene un tope de memoria (mem_limit, ajustable en .env) para que la VM de WSL no crezca sin control.
 # Levantar todo:   docker compose up -d --build      (desde esta carpeta)
-# Ollama corre aparte (en Windows): ver OLLAMA_URL
 name: agentes
 
 services:
   n8n:
     image: docker.n8n.io/n8nio/n8n:latest
     container_name: n8n-container
+    mem_limit: ${N8N_MEM:-2g}
     restart: unless-stopped
     ports:
       - "${BIND_IP:-127.0.0.1}:${N8N_PORT:-5678}:5678"
@@ -52,6 +53,7 @@ services:
     # Debe ser la MISMA versión que la imagen de n8n
     image: n8nio/runners:latest
     container_name: n8n-runners
+    mem_limit: ${N8N_RUNNERS_MEM:-1g}
     restart: unless-stopped
     depends_on:
       - n8n
@@ -59,11 +61,35 @@ services:
       - N8N_RUNNERS_TASK_BROKER_URI=http://n8n:5679
       - N8N_RUNNERS_AUTH_TOKEN=${N8N_RUNNERS_AUTH_TOKEN}
 
+  # Modelos locales (Ollama) con la GPU NVIDIA. Los modelos viven en el volumen agentes_ollama.
+  ollama:
+    image: ollama/ollama:${OLLAMA_VERSION:-0.40.13}
+    container_name: ollama
+    mem_limit: ${OLLAMA_MEM:-3g}
+    restart: unless-stopped
+    ports:
+      - "${BIND_IP:-127.0.0.1}:${OLLAMA_PORT:-11434}:11434"
+    volumes:
+      - ollama:/root/.ollama
+    environment:
+      - OLLAMA_KEEP_ALIVE=${OLLAMA_KEEP_ALIVE:-15m}
+      # Bolt (7,9 GB) y Nano (2,8 GB) entran juntos en los 12 GB de la RTX 3060 y atienden en paralelo
+      - OLLAMA_MAX_LOADED_MODELS=${OLLAMA_MAX_LOADED_MODELS:-2}
+      - OLLAMA_NUM_PARALLEL=${OLLAMA_NUM_PARALLEL:-2}
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+
   # Genera HTML, PDF, Word, Excel y MD con gráficos y diagramas; sirve los archivos en /files
   doc-service:
     build: ./doc-service
     image: doc-service:1.6
     container_name: doc-service
+    mem_limit: ${DOC_SERVICE_MEM:-1g}
     restart: unless-stopped
     ports:
       - "${BIND_IP:-127.0.0.1}:${DOC_SERVICE_PORT:-8090}:8090"
@@ -78,6 +104,7 @@ services:
     build: ./mcp-tools
     image: mcp-tools:1.1
     container_name: mcp-tools
+    mem_limit: ${MCP_MEM:-3g}
     restart: unless-stopped
     shm_size: 512m
     ports:
@@ -99,6 +126,7 @@ services:
     build: ./orquestador-web
     image: orquestador-web:1.1
     container_name: orquestador-web
+    mem_limit: ${WEB_MEM:-512m}
     restart: unless-stopped
     ports:
       - "${BIND_IP:-127.0.0.1}:${WEB_PORT:-8095}:8095"
@@ -110,6 +138,12 @@ services:
       - N8N_WEBHOOK_TOKEN=${N8N_WEBHOOK_TOKEN}
       - N8N_WEBHOOK=${N8N_INTERNAL_URL:-http://n8n-container:5678}/webhook/orquestador
       - N8N_ESTADO=${N8N_INTERNAL_URL:-http://n8n-container:5678}/webhook/estado-modelos
-      - OLLAMA_URL=${OLLAMA_URL:-http://192.168.65.254:11434}
+      - OLLAMA_URL=${OLLAMA_URL:-http://ollama:11434}
     depends_on:
       - n8n
+      - ollama
+
+volumes:
+  # Modelos de Ollama (volumen de Docker: mucho más rápido que una carpeta de Windows para cargarlos en la GPU)
+  ollama:
+    name: agentes_ollama

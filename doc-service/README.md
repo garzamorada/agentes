@@ -18,7 +18,12 @@ docker compose up -d --build doc-service
 
 ## API
 
-`POST /documento` — requiere el header `X-API-Key: <DOC_SERVICE_API_KEY>` (del `.env`). `GET /files/...` y `/health` son libres.
+`POST /documento` y `POST /imagen` requieren el header `X-API-Key: <DOC_SERVICE_API_KEY>` (del `.env`). `GET /files/...` y `/health` son libres.
+
+`POST /imagen` → un gráfico o diagrama suelto en PNG/SVG: `{"grafico": {...}, "formatos": "png,svg", "nombre": "..."}`.
+Tipos de gráfico (también en `graficos_json` de `/documento`): `barras`, `barras_horizontales`, `apiladas`, `linea`, `area`,
+`torta`, `dona`, `dispersion` (etiquetas = valores X), `histograma` (solo `valores`) y `mapa_calor` (cada serie es una fila).
+Opciones: `eje_x`, `eje_y`, `unidad`, `mostrar_valores`, `colores`. En Excel, dispersión, histograma y mapa de calor van como imagen.
 
 | Campo | Descripción |
 |---|---|
