@@ -173,6 +173,8 @@ button { font: inherit; color: inherit; cursor: pointer; }
   .fecha { display: none; }
   .cabecera, .conversacion, .redactor { padding-left: 16px; padding-right: 16px; }
   .burbuja { max-width: 92%; }
+  .botones-paneles { overflow-x: auto; max-width: 55vw; }
+  .botones-paneles .btn { flex-shrink: 0; }
 }
 
 /* ---------- progreso en vivo ---------- */
@@ -210,7 +212,14 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .pestanas { display: flex; gap: 4px; padding: 0 18px; border-bottom: 1px solid var(--borde); overflow-x: auto; }
 .pestanas button { border: 0; background: none; padding: 8px 10px; font-size: 13px; color: var(--suave); border-bottom: 2px solid transparent; white-space: nowrap; }
 .pestanas button.activa { color: var(--texto); border-bottom-color: var(--acento); font-weight: 600; }
-.modal-cuerpo { padding: 12px 18px 18px; overflow: auto; }
+.modal-cab, .pestanas { flex-shrink: 0; }   /* con tablas largas no se achican */
+.modal-cuerpo { padding: 12px 18px 18px; overflow: auto; min-height: 0; }
+/* Paneles de agentes, herramientas y skills */
+.botones-paneles { display: flex; gap: 6px; flex-wrap: nowrap; }
+.buscador-panel { width: 100%; margin-bottom: 10px; padding: 7px 10px; border: 1px solid var(--borde); border-radius: 8px; background: var(--fondo); color: var(--texto); font: inherit; font-size: 13px; }
+.tabla-modelos a { color: var(--acento); text-decoration: none; }
+.tabla-modelos a:hover { text-decoration: underline; }
+.tabla-modelos td .chip + .chip { margin-left: 4px; }
 .tabla-modelos { width: 100%; border-collapse: collapse; font-size: 13px; }
 .tabla-modelos th { text-align: left; color: var(--suave); font-weight: 600; font-size: 12px; padding: 6px 8px; border-bottom: 1px solid var(--borde); white-space: nowrap; }
 .tabla-modelos td { padding: 7px 8px; border-bottom: 1px solid var(--borde); vertical-align: top; }

@@ -37,7 +37,7 @@
     "Revisá con revisar_codigo (Ruff) todo el código Python que entregues y corregí lo que marque antes de responder."
   ],
   "seguridad": [
-    "Seguridad desde el diseño: validación de entradas, consultas parametrizadas, secretos fuera del código (variables de entorno), mínimo privilegio. Para revisiones de seguridad a fondo, sugerí a Stiuso (agente seguridad).",
+    "Seguridad desde el diseño: validación de entradas, consultas parametrizadas, secretos fuera del código (variables de entorno), mínimo privilegio. Para revisiones de seguridad a fondo, sugerí a Heimdall (agente seguridad).",
     "No pongas claves reales ni datos personales en los ejemplos.",
     "Recomendá dependencias mantenidas y con versión fija."
   ],

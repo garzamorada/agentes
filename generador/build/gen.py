@@ -33,7 +33,7 @@ WEBHOOK_PATH = 'agente-especialista'
 AGENTES_DIR = B.parent / 'agentes'
 SKILLS_DIR = B.parent.parent / 'skills'       # skills auditadas del proyecto (las lee el MCP con leer_skill)
 AGENTES = {}
-for f in sorted(AGENTES_DIR.glob('*.json')):
+for f in sorted(AGENTES_DIR.glob('[!_]*.json')):   # _sistema.json: agentes de sistema (ver más abajo)
     a = json.loads(f.read_text(encoding='utf-8'))
     assert a['id'] == f.stem, f'{f.name}: el id tiene que coincidir con el nombre del archivo'
     AGENTES[a['id']] = a
@@ -78,13 +78,11 @@ for k, a in AGENTES.items():
         'memoria': a['memoria'],
     }
 
-# Modelos de los agentes de sistema (no son especialistas: planifican, integran y revisan)
-AGENTES_SISTEMA = {
-    'orquestador': ['nvidia/nemotron-3-ultra-550b-a55b', 'deepseek-ai/deepseek-v4.1-flash', 'minimaxai/minimax-m3.1-flash', 'mistralai/mistral-large-4-1t-a52b'],
-    # Revisión final: modelos rápidos primero (ultra tardó >100 s en revisar, 30/10/2026)
-    'verificador': ['nvidia/nemotron-3.5-lightning-30b-a3b', 'deepseek-ai/deepseek-v4.1-flash', 'minimaxai/minimax-m3.1-flash', 'nvidia/nemotron-3-ultra-550b-a55b'],
-    'sintesis': ['nvidia/nemotron-3-ultra-550b-a55b', 'deepseek-ai/deepseek-v4.1-flash', 'mistralai/mistral-large-4-1t-a52b', 'nvidia/nemotron-3.5-lightning-30b-a3b'],
-}
+# Agentes de sistema (no son especialistas: planifican, integran y revisan): alias, rol y modelos en
+# generador/agentes/_sistema.json. El verificador usa modelos rápidos primero (ultra tardó >100 s en revisar, 30/10/2026).
+SISTEMA = json.loads((AGENTES_DIR / '_sistema.json').read_text(encoding='utf-8'))
+assert set(SISTEMA) == {'orquestador', 'sintesis', 'verificador'}, set(SISTEMA)
+AGENTES_SISTEMA = {k: s['modelos'] for k, s in SISTEMA.items()}
 MODELOS_NVIDIA = {**AGENTES_SISTEMA, **{k: a['modelos']['nvidia'] for k, a in AGENTES.items()}}
 MODELOS_OLLAMA = {k: a['modelos']['ollama'] for k, a in AGENTES.items() if a['modelos'].get('ollama')}
 CONFIG_JS = (js('config_modelos.js').replace('__MODELOS_NVIDIA__', json.dumps(MODELOS_NVIDIA, ensure_ascii=False))
@@ -95,6 +93,8 @@ for m in {m for l in [*MODELOS_NVIDIA.values(), *MODELOS_OLLAMA.values()] for m 
 
 PROMPT_JS = '''// Catálogo de agentes (skills NVIDIA agrupadas por especialidad) y armado del prompt de sistema.
 const AGENTES = __CATALOG__;
+// Agentes de sistema con su alias (generador/agentes/_sistema.json)
+const SISTEMA = __SISTEMA__;
 
 const HERRAMIENTAS = __REGLAS__;
 
@@ -114,7 +114,7 @@ if (agent === 'orquestador') {
     .map(([k, a]) => `- ${k}: ${a.nombre}, ${a.rol} (${a.alcance}).\\n  Asignale: ${a.cuando}.`
       + (a.nvidia.length ? `\\n  Skills NVIDIA: ${ids(a.nvidia)}` : '') + (a.skills.length ? `\\n  Skills: ${ids(a.skills)}` : ''))
     .join('\\n');
-  systemPrompt = `Sos el ORQUESTADOR de un equipo de agentes especialistas en el ecosistema NVIDIA.
+  systemPrompt = `Sos ${SISTEMA.orquestador.nombre}, el ORQUESTADOR de un equipo de agentes especialistas en el ecosistema NVIDIA.
 Tu único trabajo es planificar: dividir el pedido del usuario en 1 a 3 subtareas y asignar cada una al agente más adecuado.
 Las subtareas se ejecutan EN PARALELO, así que cada una debe ser independiente y autocontenida.
 
@@ -156,13 +156,13 @@ Reglas:
 Ejemplo: "¿cuántos días faltan para Navidad? y ¿qué skill uso para un Jetson?" →
 {"plan":[{"agente":"general","tarea":"Calcular cuántos días faltan desde hoy hasta el 25 de diciembre","complejidad":"simple"},{"agente":"fisica_robotica","tarea":"Indicar qué skill de NVIDIA sirve para revisar la salud de un Jetson","complejidad":"simple"}]}`;
 } else if (agent === 'sintesis') {
-  systemPrompt = `Sos el orquestador. Recibís el pedido original del usuario y las respuestas de los agentes especialistas.
+  systemPrompt = `Sos ${SISTEMA.sintesis.nombre}, la síntesis del orquestador. Recibís el pedido original del usuario y las respuestas de los agentes especialistas.
 Integralas en una única respuesta clara, en español, sin repetir contenido, conservando los IDs de skills, enlaces y TODOS los links de descarga de archivos tal cual.
 Si algún agente no pudo responder, decilo brevemente.
 No inventes skills: mencioná solo IDs de skills que aparezcan en las respuestas de los agentes.
 No dejes afuera ningún punto del pedido: cada cosa que pidió el usuario tiene que estar respondida o entregada.`;
 } else if (agent === 'verificador') {
-  systemPrompt = `Sos el VERIFICADOR del orquestador. Revisás si una respuesta cumple TODO lo que pidió el usuario, antes de entregarla.
+  systemPrompt = `Sos ${SISTEMA.verificador.nombre}, el VERIFICADOR del orquestador. Revisás si una respuesta cumple TODO lo que pidió el usuario, antes de entregarla.
 
 Revisá punto por punto:
 1. Cada pregunta o tarea del pedido tiene su respuesta (si pidió varias cosas, que estén todas).
@@ -195,7 +195,7 @@ Si cumple, devolvé {"cumple":true,"faltantes":[],"instruccion":""}.`;
 
 return { json: {
   agent,
-  agente_nombre: AGENTES[agent] ? AGENTES[agent].nombre : agent,
+  agente_nombre: AGENTES[agent] ? AGENTES[agent].nombre : SISTEMA[agent] ? SISTEMA[agent].nombre : agent,
   // Memoria por agente: cuántos mensajes del chat recuerda (orquestador, síntesis y verificador no guardan)
   memoria_activa: AGENTES[agent] ? AGENTES[agent].memoria.activa : agent === 'orquestador',
   memoria_ventana: AGENTES[agent] ? AGENTES[agent].memoria.ventana : 5,
@@ -207,7 +207,8 @@ return { json: {
   fase: j.fase || null,   // 'correccion' cuando el verificador pidió completar algo
   systemPrompt,
 } };
-'''.replace('__CATALOG__', json.dumps(catalog, ensure_ascii=False, indent=1)).replace('__REGLAS__', json.dumps(REGLAS, ensure_ascii=False))
+'''.replace('__CATALOG__', json.dumps(catalog, ensure_ascii=False, indent=1)).replace('__SISTEMA__', json.dumps(
+    {k: {'nombre': s['nombre'], 'rol': s['rol']} for k, s in SISTEMA.items()}, ensure_ascii=False)).replace('__REGLAS__', json.dumps(REGLAS, ensure_ascii=False))
 
 nid = lambda: str(uuid.uuid4())
 
@@ -449,7 +450,8 @@ if (res.length === 1 && res[0].ok) {
   return [{ json: { saltar: true, directo: res[0].output } }];
 }
 const partes = res.map(r => `### ${r.agent || '?'} (modelo: ${r.model || 'ninguno'})\\nTarea: ${r.tarea || ''}\\n\\n${err(r)}`).join('\\n\\n---\\n\\n');
-return [{ json: { saltar: false, agent: 'sintesis', complejidad: 'compleja', prompt: `Pedido original:\\n${original}\\n\\nRespuestas de los agentes:\\n\\n${partes}` } }];'''
+// session_id: para que la web muestre el progreso de la síntesis (Vision); no guarda memoria
+return [{ json: { saltar: false, agent: 'sintesis', complejidad: 'compleja', session_id: $('Preparar pedido').first().json.session_id || null, prompt: `Pedido original:\\n${original}\\n\\nRespuestas de los agentes:\\n\\n${partes}` } }];'''
 
 OUT_JS = '''const esp = $('Ejecutar agentes en paralelo').all().map(i => i.json);
 const j = $json;

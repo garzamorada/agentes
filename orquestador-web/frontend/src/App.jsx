@@ -44,7 +44,8 @@ const md = txt => ({ __html: DOMPurify.sanitize(marked.parse(txt || '', { breaks
 // Versión de este bundle (hash que pone Vite en el nombre del archivo)
 const MI_VERSION = (import.meta.url.match(/index-([\w-]+)\.js/) || [])[1] || 'dev';
 
-const idDeHash = () => (location.hash.match(/^#\/c\/(\w+)/) || [])[1] || null;
+// Los ids de chat pueden tener guiones (los de Cline: cline-…, cline-code-…)
+const idDeHash = () => (location.hash.match(/^#\/c\/([\w-]+)/) || [])[1] || null;
 
 function grupo(ts) {
   const d = new Date(ts * 1000), hoy = new Date();
@@ -210,7 +211,12 @@ function PanelModelos({ chat, onCerrar }) {
   const [datos, setDatos] = useState(null);
   const [pestana, setPestana] = useState(chat?.mensajes?.length ? 'chat' : 'locales');
   const [error, setError] = useState('');
-  const cargar = useCallback(() => { setError(''); api.modelos().then(setDatos).catch(e => setError(e.message)); }, []);
+  const [sesion, setSesion] = useState(null);
+  const cargar = useCallback(() => {
+    setError('');
+    api.modelos().then(setDatos).catch(e => setError(e.message));
+    api.usoModelos(INICIO_SESION).then(d => setSesion(d.modelos)).catch(e => setError(e.message));
+  }, []);
   useEffect(() => { cargar(); }, [cargar]);
   useEffect(() => { const f = e => e.key === 'Escape' && onCerrar(); addEventListener('keydown', f); return () => removeEventListener('keydown', f); }, [onCerrar]);
 
@@ -224,7 +230,7 @@ function PanelModelos({ chat, onCerrar }) {
       for (const k of vistos) {
         const [modelo, agente] = k.split('|');
         c[modelo] = c[modelo] || { usos: 0, agentes: new Set() };
-        c[modelo].usos++; c[modelo].agentes.add(agente === 'orquestador' ? 'planificador' : agente === 'sintesis' ? 'síntesis' : agente);
+        c[modelo].usos++; c[modelo].agentes.add(NOMBRE_SISTEMA[agente] || agente);
       }
     }
     return Object.entries(c).sort((a, b) => b[1].usos - a[1].usos);
@@ -242,7 +248,8 @@ function PanelModelos({ chat, onCerrar }) {
           <button className="btn icono" onClick={onCerrar} aria-label="Cerrar">✕</button>
         </header>
         <nav className="pestanas">
-          {[['chat', `En este chat (${usados.length})`], ['locales', `Locales · Ollama (${datos?.locales.length ?? '…'})`],
+          {[['chat', `En este chat (${usados.length})`], ['sesion', `En esta sesión (${sesion?.length ?? '…'})`],
+            ['locales', `Locales · Ollama (${datos?.locales.length ?? '…'})`],
             ['remotos', `Remotos · NVIDIA (${datos?.remotos.length ?? '…'})`]].map(([k, t]) => (
             <button key={k} className={pestana === k ? 'activa' : ''} onClick={() => setPestana(k)}>{t}</button>
           ))}
@@ -258,6 +265,18 @@ function PanelModelos({ chat, onCerrar }) {
                   <td>{d.usos}</td><td>{[...d.agentes].join(', ')}</td></tr>))}</tbody>
             </table>
           ) : <p className="vacio">Todavía no se usaron modelos en este chat.</p>)}
+          {pestana === 'sesion' && (!sesion ? <p className="vacio">Cargando…</p> : sesion.length ? (<>
+            <p className="dato">Todos los chats, {textoSesion()}.</p>
+            <table className="tabla-modelos">
+              <thead><tr><th>Modelo</th><th>Tipo</th><th>Respuestas</th><th>Agentes</th><th>Último uso</th></tr></thead>
+              <tbody>{sesion.map(m => (
+                <tr key={m.modelo}><td className="mono">{corto(m.modelo)}</td>
+                  <td><span className={`chip ${m.modelo.startsWith('ollama/') ? 'ollama' : 'nvidia'}`}>{m.modelo.startsWith('ollama/') ? 'local' : 'remoto'}</span></td>
+                  <td>{m.usos}</td>
+                  <td className="agentes-col">{m.agentes.map(a => NOMBRE_SISTEMA[a] || a).join(', ')}</td>
+                  <td>{cuando(m.ultimo)}</td></tr>))}</tbody>
+            </table>
+          </>) : <p className="vacio">Todavía no se usaron modelos en esta sesión ({textoSesion()}).</p>)}
           {pestana === 'locales' && (!datos ? <p className="vacio">Cargando…</p> : (
             <table className="tabla-modelos">
               <thead><tr><th></th><th>Modelo</th><th>Tamaño</th><th>En memoria</th><th>Usos hoy</th><th>Agentes</th></tr></thead>
@@ -295,6 +314,245 @@ function PanelModelos({ chat, onCerrar }) {
         </div>
       </div>
     </div>
+  );
+}
+
+// ---------- Paneles de agentes, herramientas y skills (mismo formato que Modelos) ----------
+// Sesión = desde que se abrió la web en esta pestaña del navegador (sobrevive a recargar la página)
+const INICIO_SESION = (() => {
+  try {
+    let v = sessionStorage.getItem('orquestador.sesion');
+    if (!v) { v = String(Date.now() / 1000); sessionStorage.setItem('orquestador.sesion', v); }
+    return Number(v);
+  } catch { return Date.now() / 1000; }
+})();
+const textoSesion = () => `desde las ${new Date(INICIO_SESION * 1000).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })}`;
+const cuando = t => t ? new Date(t * (t < 1e12 ? 1000 : 1)).toLocaleString('es-AR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '';
+const SKILL_NVIDIA = /github\.com\/NVIDIA\/skills\/tree\/main\/skills\/([\w.-]+)/g;
+const LEER_SKILL = /leer_skill\(([\w.-]+)/;
+
+// Uso dentro del chat abierto, a partir de los mensajes y sus eventos de progreso
+function usoDelChat(chat) {
+  const agentes = {}, herramientas = {}, propias = {}, nvidia = {};
+  const sumar = (c, k, t) => { c[k] = c[k] || { usos: 0, ultimo: 0 }; c[k].usos++; c[k].ultimo = Math.max(c[k].ultimo, t || 0); };
+  for (const m of chat?.mensajes || []) {
+    const enEste = new Set();
+    for (const a of m.agentes || []) if (a.agente) enEste.add(a.agente);
+    for (const e of m.eventos || []) {
+      if (e.tipo === 'modelo' && e.agente) enEste.add(e.agente);
+      if (e.tipo === 'herramienta' && e.herramienta) {
+        sumar(herramientas, e.herramienta, e.ts);
+        const s = e.herramienta === 'leer_skill' && LEER_SKILL.exec(e.texto || '');
+        if (s) sumar(propias, s[1], e.ts);
+      }
+    }
+    if (m.rol === 'asistente' && (m.texto || '').includes('· síntesis →')) enEste.add('sintesis');
+    for (const a of enEste) sumar(agentes, a, m.creado);
+    if (m.rol === 'asistente') for (const id of new Set([...(m.texto || '').matchAll(SKILL_NVIDIA)].map(x => x[1]))) sumar(nvidia, id, m.creado);
+  }
+  return { agentes, herramientas, propias, nvidia };
+}
+
+function Modal({ titulo, pestanas, pestana, setPestana, onActualizar, onCerrar, children }) {
+  useEffect(() => { const f = e => e.key === 'Escape' && onCerrar(); addEventListener('keydown', f); return () => removeEventListener('keydown', f); }, [onCerrar]);
+  return (
+    <div className="modal-velo" onClick={onCerrar}>
+      <div className="modal" onClick={e => e.stopPropagation()} role="dialog" aria-label={titulo}>
+        <header className="modal-cab">
+          <h2>{titulo}</h2>
+          <button className="btn chico fantasma" onClick={onActualizar}>Actualizar</button>
+          <button className="btn icono" onClick={onCerrar} aria-label="Cerrar">✕</button>
+        </header>
+        <nav className="pestanas">
+          {pestanas.map(([k, t]) => <button key={k} className={pestana === k ? 'activa' : ''} onClick={() => setPestana(k)}>{t}</button>)}
+        </nav>
+        <div className="modal-cuerpo">{children}</div>
+      </div>
+    </div>
+  );
+}
+
+function useDatos(cargarApi) {
+  const [datos, setDatos] = useState(null);
+  const [error, setError] = useState('');
+  const cargar = useCallback(() => { setError(''); cargarApi(INICIO_SESION).then(setDatos).catch(e => setError(e.message)); }, [cargarApi]);
+  useEffect(() => { cargar(); }, [cargar]);
+  return [datos, error, cargar];
+}
+
+function Buscador({ valor, onCambio, placeholder }) {
+  return <input className="buscador-panel" value={valor} onChange={e => onCambio(e.target.value)} placeholder={placeholder} />;
+}
+
+// Alias de los agentes de sistema (generador/agentes/_sistema.json; el panel de Agentes los trae del servidor)
+const NOMBRE_SISTEMA = { orquestador: 'Captain America', sintesis: 'Vision', verificador: 'Doctor Strange' };
+
+function PanelAgentes({ chat, onCerrar }) {
+  const [datos, error, cargar] = useDatos(api.agentes);
+  const enChat = useMemo(() => usoDelChat(chat).agentes, [chat]);
+  const [pestana, setPestana] = useState(Object.keys(enChat).length ? 'chat' : 'todos');
+  const porId = useMemo(() => Object.fromEntries([...(datos?.agentes || []), ...(datos?.sistema || [])].map(a => [a.id, a])), [datos]);
+  const delChat = Object.entries(enChat).sort((a, b) => b[1].usos - a[1].usos);
+  const deSesion = [...(datos?.agentes || []), ...(datos?.sistema || [])].filter(a => a.sesion?.usos).sort((a, b) => b.sesion.usos - a.sesion.usos);
+  return (
+    <Modal titulo="Agentes" onCerrar={onCerrar} onActualizar={cargar} pestana={pestana} setPestana={setPestana}
+      pestanas={[['chat', `En este chat (${delChat.length})`], ['sesion', `En esta sesión (${datos ? deSesion.length : '…'})`],
+        ['todos', `Todos (${datos?.agentes.length ?? '…'})`]]}>
+      {error && <div className="aviso">{error}</div>}
+      {pestana === 'sesion' && (!datos ? <p className="vacio">Cargando…</p> : deSesion.length ? (<>
+        <p className="dato">Todos los chats, {textoSesion()}.</p>
+        <table className="tabla-modelos">
+          <thead><tr><th>Agente</th><th>Rol</th><th>Respuestas</th><th>Último uso</th></tr></thead>
+          <tbody>{deSesion.map(a => (
+            <tr key={a.id}><td><b>{a.nombre}</b><small className="mono">{a.id}</small></td>
+              <td className="agentes-col">{a.rol}</td><td>{a.sesion.usos}</td><td>{cuando(a.sesion.ultimo)}</td></tr>))}</tbody>
+        </table>
+      </>) : <p className="vacio">Todavía no respondió ningún agente en esta sesión ({textoSesion()}).</p>)}
+      {pestana === 'chat' && (delChat.length ? (
+        <table className="tabla-modelos">
+          <thead><tr><th>Agente</th><th>Rol</th><th>Respuestas</th><th>Último uso</th></tr></thead>
+          <tbody>{delChat.map(([id, u]) => (
+            <tr key={id}><td><b>{porId[id]?.nombre || NOMBRE_SISTEMA[id] || id}</b><small className="mono">{id}</small></td>
+              <td className="agentes-col">{porId[id]?.rol || ''}</td><td>{u.usos}</td><td>{cuando(u.ultimo)}</td></tr>))}</tbody>
+        </table>
+      ) : <p className="vacio">Todavía no respondió ningún agente en este chat.</p>)}
+      {pestana === 'todos' && (!datos ? <p className="vacio">Cargando…</p> : (
+        <table className="tabla-modelos">
+          <thead><tr><th>Agente</th><th>Rol y alcance</th><th>Skills</th><th>Modelos</th><th>Memoria</th><th>Usos</th><th>Último uso</th></tr></thead>
+          <tbody>
+            {datos.agentes.map(a => (
+              <tr key={a.id} title={a.cuando ? `Se le asigna: ${a.cuando}` : ''}>
+                <td><b>{a.nombre}</b><small className="mono">{a.id}</small>{a.personaje && <small>{a.personaje}</small>}</td>
+                <td className="agentes-col">{a.rol}<small>{a.alcance}</small></td>
+                <td className="agentes-col">
+                  {a.skills.length > 0 && <span className="chip">{a.skills.length} del proyecto</span>}
+                  {a.skills_inline > 0 && <span className="chip">{a.skills_inline} propias</span>}
+                  {a.categorias_nvidia.length > 0 && <small>NVIDIA: {a.categorias_nvidia.join(', ')}</small>}
+                </td>
+                <td className="mono agentes-col">{corto(a.modelos?.nvidia?.[0] || '')}<small>{(a.modelos?.ollama || []).map(corto).join(', ') || 'locales por defecto'}</small></td>
+                <td>{a.memoria?.activa ? `${a.memoria.ventana} msj.` : 'no'}</td>
+                <td>{a.usos}</td>
+                <td>{cuando(a.ultimo_uso) || <span className="dato">nunca</span>}</td>
+              </tr>))}
+            {datos.sistema.map(a => (
+              <tr key={a.id}><td><b>{a.nombre}</b><small className="mono">{a.id}</small>{a.personaje && <small>{a.personaje}</small>}</td>
+                <td className="agentes-col">{a.rol}<small>Agente de sistema</small></td><td></td>
+                <td className="mono agentes-col">{corto(a.modelos?.nvidia?.[0] || '')}</td><td>—</td>
+                <td>{a.usos}</td><td>{cuando(a.ultimo_uso) || <span className="dato">nunca</span>}</td></tr>))}
+          </tbody>
+        </table>
+      ))}
+    </Modal>
+  );
+}
+
+function PanelHerramientas({ chat, onCerrar }) {
+  const [datos, error, cargar] = useDatos(api.herramientas);
+  const enChat = useMemo(() => usoDelChat(chat).herramientas, [chat]);
+  const [pestana, setPestana] = useState(Object.keys(enChat).length ? 'chat' : 'todas');
+  const desc = useMemo(() => Object.fromEntries((datos?.herramientas || []).map(h => [h.nombre, h.descripcion])), [datos]);
+  const delChat = Object.entries(enChat).sort((a, b) => b[1].usos - a[1].usos);
+  const primera = t => (t || '').split('\n')[0];
+  const deSesion = (datos?.herramientas || []).filter(h => h.sesion?.usos).sort((a, b) => b.sesion.usos - a.sesion.usos);
+  return (
+    <Modal titulo="Herramientas" onCerrar={onCerrar} onActualizar={cargar} pestana={pestana} setPestana={setPestana}
+      pestanas={[['chat', `En este chat (${delChat.length})`], ['sesion', `En esta sesión (${datos ? deSesion.length : '…'})`],
+        ['todas', `Todas · MCP (${datos?.herramientas.length ?? '…'})`]]}>
+      {error && <div className="aviso">{error}</div>}
+      {pestana === 'sesion' && (!datos ? <p className="vacio">Cargando…</p> : deSesion.length ? (<>
+        <p className="dato">Todos los chats, {textoSesion()}.</p>
+        <table className="tabla-modelos">
+          <thead><tr><th>Herramienta</th><th>Para qué</th><th>Usos</th><th>Último uso</th></tr></thead>
+          <tbody>{deSesion.map(h => (
+            <tr key={h.nombre}><td className="mono">{h.nombre}</td><td className="agentes-col" title={h.descripcion}>{primera(h.descripcion)}</td>
+              <td>{h.sesion.usos}</td><td>{cuando(h.sesion.ultimo)}</td></tr>))}</tbody>
+        </table>
+      </>) : <p className="vacio">Todavía no se usaron herramientas en esta sesión ({textoSesion()}).</p>)}
+      {datos?.errores?.map(e => <div key={e} className="aviso">{e}</div>)}
+      {pestana === 'chat' && (delChat.length ? (
+        <table className="tabla-modelos">
+          <thead><tr><th>Herramienta</th><th>Para qué</th><th>Usos</th><th>Último uso</th></tr></thead>
+          <tbody>{delChat.map(([n, u]) => (
+            <tr key={n}><td className="mono">{n}</td><td className="agentes-col" title={desc[n]}>{primera(desc[n])}</td><td>{u.usos}</td><td>{cuando(u.ultimo)}</td></tr>))}</tbody>
+        </table>
+      ) : <p className="vacio">Todavía no se usaron herramientas en este chat.</p>)}
+      {pestana === 'todas' && (!datos ? <p className="vacio">Cargando…</p> : (
+        <table className="tabla-modelos">
+          <thead><tr><th>Herramienta</th><th>Para qué</th><th>Usos</th><th>Último uso</th></tr></thead>
+          <tbody>{datos.herramientas.map(h => (
+            <tr key={h.nombre} className={h.usos ? '' : 'apagado'}><td className="mono">{h.nombre}</td>
+              <td className="agentes-col" title={h.descripcion}>{primera(h.descripcion)}</td><td>{h.usos}</td>
+              <td>{cuando(h.ultimo_uso) || <span className="dato">nunca</span>}</td></tr>))}</tbody>
+        </table>
+      ))}
+    </Modal>
+  );
+}
+
+function PanelSkills({ chat, onCerrar }) {
+  const [datos, error, cargar] = useDatos(api.skills);
+  const uso = useMemo(() => usoDelChat(chat), [chat]);
+  const delChat = [...Object.entries(uso.propias).map(([id, u]) => ({ id, tipo: 'proyecto', ...u })),
+    ...Object.entries(uso.nvidia).map(([id, u]) => ({ id, tipo: 'NVIDIA', ...u }))].sort((a, b) => b.usos - a.usos);
+  const [pestana, setPestana] = useState(delChat.length ? 'chat' : 'proyecto');
+  const [filtro, setFiltro] = useState('');
+  const coincide = s => !filtro || `${s.id} ${s.descripcion} ${s.agente || ''} ${(s.agentes || []).join(' ')} ${s.categoria || ''}`.toLowerCase().includes(filtro.toLowerCase());
+  const info = useMemo(() => Object.fromEntries([...(datos?.propias || []), ...(datos?.nvidia || [])].map(s => [s.id, s])), [datos]);
+  const nvidiaFiltradas = (datos?.nvidia || []).filter(coincide);
+  const deSesion = [...(datos?.propias || []).map(s => ({ ...s, tipo: 'proyecto' })), ...(datos?.nvidia || []).map(s => ({ ...s, tipo: 'NVIDIA' }))]
+    .filter(s => s.sesion?.usos).sort((a, b) => b.sesion.usos - a.sesion.usos);
+  return (
+    <Modal titulo="Skills" onCerrar={onCerrar} onActualizar={cargar} pestana={pestana} setPestana={setPestana}
+      pestanas={[['chat', `En este chat (${delChat.length})`], ['sesion', `En esta sesión (${datos ? deSesion.length : '…'})`],
+        ['proyecto', `Del proyecto (${datos?.propias.length ?? '…'})`], ['nvidia', `NVIDIA (${datos?.nvidia.length ?? '…'})`]]}>
+      {error && <div className="aviso">{error}</div>}
+      {datos?.errores?.map(e => <div key={e} className="aviso">{e}</div>)}
+      {pestana === 'sesion' && (!datos ? <p className="vacio">Cargando…</p> : deSesion.length ? (<>
+        <p className="dato">Todos los chats, {textoSesion()}.</p>
+        <table className="tabla-modelos">
+          <thead><tr><th>Skill</th><th>Tipo</th><th>Para qué</th><th>Usos</th><th>Último uso</th></tr></thead>
+          <tbody>{deSesion.map(s => (
+            <tr key={s.tipo + s.id}><td className="mono">{s.id}</td>
+              <td><span className={`chip ${s.tipo === 'NVIDIA' ? 'nvidia' : 'ollama'}`}>{s.tipo}</span></td>
+              <td className="agentes-col">{(s.descripcion || '').slice(0, 160)}</td><td>{s.sesion.usos}</td><td>{cuando(s.sesion.ultimo)}</td></tr>))}</tbody>
+        </table>
+      </>) : <p className="vacio">Todavía no se usaron skills en esta sesión ({textoSesion()}).</p>)}
+      {(pestana === 'proyecto' || pestana === 'nvidia') && <Buscador valor={filtro} onCambio={setFiltro} placeholder="Buscar por id, descripción, agente o categoría…" />}
+      {pestana === 'chat' && (delChat.length ? (
+        <table className="tabla-modelos">
+          <thead><tr><th>Skill</th><th>Tipo</th><th>Para qué</th><th>Usos</th><th>Último uso</th></tr></thead>
+          <tbody>{delChat.map(s => (
+            <tr key={s.tipo + s.id}><td className="mono">{s.id}</td>
+              <td><span className={`chip ${s.tipo === 'NVIDIA' ? 'nvidia' : 'ollama'}`}>{s.tipo}</span></td>
+              <td className="agentes-col">{info[s.id]?.descripcion?.slice(0, 160) || ''}</td><td>{s.usos}</td><td>{cuando(s.ultimo)}</td></tr>))}</tbody>
+        </table>
+      ) : <p className="vacio">Todavía no se usaron skills en este chat (se cuentan las que los agentes leen y las de NVIDIA que citan).</p>)}
+      {pestana === 'proyecto' && (!datos ? <p className="vacio">Cargando…</p> : (
+        <table className="tabla-modelos">
+          <thead><tr><th>Skill</th><th>Para qué</th><th>Fuente</th><th>Agentes</th><th>Lecturas</th><th>Último uso</th></tr></thead>
+          <tbody>{datos.propias.filter(coincide).map(s => (
+            <tr key={s.id} className={s.usos ? '' : 'apagado'}>
+              <td className="mono">{s.id}</td>
+              <td className="agentes-col" title={s.descripcion}>{s.descripcion.slice(0, 160)}{s.descripcion.length > 160 ? '…' : ''}</td>
+              <td className="agentes-col">{s.fuente.startsWith('http') ? <a href={s.fuente} target="_blank" rel="noreferrer">{s.autor}</a> : s.autor}<small>{s.licencia}</small></td>
+              <td className="agentes-col">{s.agentes.join(', ')}</td>
+              <td>{s.usos}</td><td>{cuando(s.ultimo_uso) || <span className="dato">nunca</span>}</td>
+            </tr>))}</tbody>
+        </table>
+      ))}
+      {pestana === 'nvidia' && (!datos ? <p className="vacio">Cargando…</p> : (<>
+        {nvidiaFiltradas.length > 150 && <p className="dato">Mostrando 150 de {nvidiaFiltradas.length}: usá el buscador para filtrar.</p>}
+        <table className="tabla-modelos">
+          <thead><tr><th>Skill</th><th>Para qué</th><th>Categoría</th><th>Agente</th><th>Citas</th><th>Último uso</th></tr></thead>
+          <tbody>{nvidiaFiltradas.slice(0, 150).map(s => (
+            <tr key={s.id} className={s.usos ? '' : 'apagado'}>
+              <td className="mono"><a href={`https://github.com/NVIDIA/skills/tree/main/skills/${s.id}`} target="_blank" rel="noreferrer">{s.id}</a></td>
+              <td className="agentes-col">{s.descripcion}</td><td className="agentes-col">{s.categoria}</td><td>{s.agente}</td>
+              <td>{s.usos}</td><td>{cuando(s.ultimo_uso) || <span className="dato">nunca</span>}</td>
+            </tr>))}</tbody>
+        </table>
+      </>))}
+    </Modal>
   );
 }
 
@@ -342,6 +600,7 @@ export default function App() {
   const [menu, setMenu] = useState(false);
   const [editando, setEditando] = useState(false);
   const [verModelos, setVerModelos] = useState(false);
+  const [panel, setPanel] = useState(null);   // 'agentes' | 'herramientas' | 'skills'
   const [imagen, setImagen] = useState(null);
   useEffect(() => {
     const f = e => setImagen(e.detail);
@@ -492,9 +751,17 @@ export default function App() {
             )
           ) : <h1>Nuevo chat</h1>}
           {chat && <span className="fecha">Creado {hora(chat.creado)}</span>}
-          <button className="btn chico" onClick={() => setVerModelos(true)} title="Modelos usados y disponibles">🧠 Modelos</button>
+          <div className="botones-paneles">
+            <button className="btn chico" onClick={() => setVerModelos(true)} title="Modelos usados y disponibles">🧠 Modelos</button>
+            <button className="btn chico" onClick={() => setPanel('agentes')} title="Agentes usados y disponibles">🦸 Agentes</button>
+            <button className="btn chico" onClick={() => setPanel('herramientas')} title="Herramientas usadas y disponibles">🔧 Herramientas</button>
+            <button className="btn chico" onClick={() => setPanel('skills')} title="Skills usadas y disponibles">📚 Skills</button>
+          </div>
         </header>
         {verModelos && <PanelModelos chat={chat} onCerrar={() => setVerModelos(false)} />}
+        {panel === 'agentes' && <PanelAgentes chat={chat} onCerrar={() => setPanel(null)} />}
+        {panel === 'herramientas' && <PanelHerramientas chat={chat} onCerrar={() => setPanel(null)} />}
+        {panel === 'skills' && <PanelSkills chat={chat} onCerrar={() => setPanel(null)} />}
         {imagen && <VisorImagen img={imagen} onCerrar={() => setImagen(null)} />}
         {versionNueva && (
           <div className="version-nueva">

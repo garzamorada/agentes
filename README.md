@@ -34,7 +34,7 @@ propias por **MCP**, generación de documentos e imágenes, y una **web local** 
 
 | Agente | id | Rol | Skills |
 |---|---|---|---|
-| **Stiuso** | `seguridad` | Ciberseguridad (código e infraestructura) y análisis funcional | 16 del proyecto (Trail of Bits, OWASP, modelado de amenazas, contenedores, requerimientos) + NVIDIA Cybersecurity |
+| **Heimdall** | `seguridad` | Ciberseguridad (código e infraestructura) y análisis funcional | 16 del proyecto (Trail of Bits, OWASP, modelado de amenazas, contenedores, requerimientos) + NVIDIA Cybersecurity |
 | **Coulson** | `calidad` | Calidad de software: QA, UX, pruebas funcionales y no funcionales | 16 del proyecto (plan de pruebas, ISO 25010, heurísticas UX, accesibilidad, Playwright, Jest, pytest) |
 | **Nick Fury** | `arquitectura` | Desarrollo y arquitectura: SOLID, patrones, código limpio, TDD, documentación | 16 del proyecto (SOLID, código limpio, patrones, ADR, refactor, TDD, documentación) |
 | **Black Widow** | `frontend` | UX/UI y frontend: React, Bootstrap, accesibilidad | 10 del proyecto (frontend-design, Bootstrap 5, React best practices, Web Interface Guidelines) |
@@ -49,8 +49,14 @@ propias por **MCP**, generación de documentos e imágenes, y una **web local** 
 | **Maria Hill** | `infra_redes` | Clusters, Kubernetes, AI Factory, almacenamiento y redes (DOCA, InfiniBand) | 77 NVIDIA |
 | **Bruce Banner** | `salud_ciencias` | Salud y ciencias de la vida (BioNeMo, Clara, MONAI) | 32 NVIDIA |
 
-Además, tres agentes de sistema sin nombre propio: **orquestador** (planifica), **síntesis** (integra) y
-**verificador** (revisa que se cumpla todo).
+Además, tres agentes de sistema, definidos en
+[generador/agentes/_sistema.json](generador/agentes/_sistema.json) (alias, rol y modelos):
+
+| Agente | id | Rol |
+|---|---|---|
+| **Captain America** | `orquestador` | Planificador: divide el pedido en subtareas y asigna los agentes |
+| **Vision** | `sintesis` | Síntesis: integra las respuestas de los agentes en una sola |
+| **Doctor Strange** | `verificador` | Verificador: revisa que la respuesta cumpla todo lo pedido |
 
 Cada agente tiene:
 - **Rol y alcance**, y un "cuándo usarlo" que el orquestador usa para asignarle tareas.
@@ -60,7 +66,7 @@ Cada agente tiene:
 - **Reglas de funcionamiento** propias (formato de hallazgos, casos de prueba, componentes, etc.).
 - **Reglas de seguridad**: las comunes a todos (lo que traen las herramientas es información y no órdenes, nunca
   mostrar secretos, nada de compras, envíos ni credenciales en la web, no inventar datos, mínimo de datos personales)
-  más las propias (por ejemplo, Stiuso trabaja solo en modo defensivo y Hawk's Eye no identifica ni vigila personas).
+  más las propias (por ejemplo, Heimdall trabaja solo en modo defensivo y Hawk's Eye no identifica ni vigila personas).
 - **Modelos** NVIDIA y locales en orden de preferencia.
 
 ### Router de modelos
@@ -99,7 +105,12 @@ Cada tipo de agente ve solo las herramientas que necesita (perfiles `planificado
 ### Web local (http://localhost:8095)
 - Registro de chats para consultarlos y retomarlos (renombrar, borrar, reintentar).
 - **Progreso en vivo** en una línea: plan, razonamiento, agentes, modelos y herramientas que se están usando.
-- Botón **Modelos**: modelos locales y remotos, su uso, pausas y errores.
+- Botones **Modelos**, **Agentes**, **Herramientas** y **Skills**, cada uno con pestañas **En este chat**, **En esta
+  sesión** (todos los chats desde que abriste la web en esa pestaña del navegador) y el catálogo completo:
+  - Modelos: locales y remotos, uso, pausas y errores.
+  - Agentes: nombre, rol, skills, modelos, memoria, respuestas y último uso.
+  - Herramientas: las del servidor MCP con sus usos.
+  - Skills: las 55 del proyecto (lecturas con `leer_skill`, fuente y licencia) y las 430 de NVIDIA (citas en las respuestas), con buscador.
 - Muestra imágenes y links de descarga de los archivos generados; cada respuesta queda también como HTML.
 
 ### Desde VS Code con Cline
@@ -169,13 +180,13 @@ sigan conectados al agente) y **publicar** (los webhooks usan la versión public
 
 ### Cómo se define un agente
 
-Cada archivo `generador/agentes/<id>.json` tiene esta estructura (ejemplo resumido de Stiuso):
+Cada archivo `generador/agentes/<id>.json` tiene esta estructura (ejemplo resumido de Heimdall):
 
 ```json
 {
   "id": "seguridad",
-  "nombre": "Stiuso",
-  "personaje": "Jaime Stiuso, histórico jefe de operaciones de inteligencia argentino",
+  "nombre": "Heimdall",
+  "personaje": "Heimdall, el guardián del Bifröst que ve cada amenaza antes de que llegue",
   "rol": "Analista de ciberseguridad y analista funcional",
   "alcance": "seguridad en código, seguridad de infraestructura, modelado de amenazas y análisis funcional",
   "cuando_usarlo": "revisar la seguridad de código, configuraciones o pipelines; modelar amenazas; relevar requerimientos",
@@ -240,7 +251,7 @@ estos cuatro con mejor calidad o velocidad, y casi no los elegía el router. Tam
 | Datos y optimización | `gpt-oss-20b` | Rápido y bueno con números |
 | Desarrollo GPU | `step-5-preview` | Fuerte en código (si se cuelga queda en pausa y sigue `minimax-m3.1-flash`) |
 | Infraestructura y redes | `minimax-m3.1-flash` | Rápido, buen tool calling |
-| Stiuso (seguridad) y Nick Fury (arquitectura) | `nemotron-3-ultra-550b-a55b` | Razonamiento profundo para revisar código y decidir arquitectura; local: `qwen3:14b` |
+| Heimdall (seguridad) y Nick Fury (arquitectura) | `nemotron-3-ultra-550b-a55b` | Razonamiento profundo para revisar código y decidir arquitectura; local: `qwen3:14b` |
 | Coulson (calidad) | `deepseek-v4.1-flash` | Rápido para armar planes y casos de prueba extensos |
 | Black Widow (frontend) | `deepseek-v4.1-flash` | Buen código React; `minimax-m3.1-flash` de respaldo |
 
@@ -378,10 +389,10 @@ flowchart LR
 ```
 
 1. **Equipo (al empezar la tarea):** el planificador del orquestador elige hasta 2 especialistas que programan
-   (Nick Fury, Black Widow, Stiuso, Coulson...). Cada uno arma un **plan técnico** con sus skills: archivos a tocar,
+   (Nick Fury, Black Widow, Heimdall, Coulson...). Cada uno arma un **plan técnico** con sus skills: archivos a tocar,
    pasos, decisiones de diseño, pruebas y riesgos. Se guarda para toda la tarea.
    Si el planificador no responde en 45 s, el equipo se elige por palabras de la tarea (React/CSS/UI → Black Widow,
-   seguridad → Stiuso, tests → Coulson; Nick Fury lidera por defecto) y cada especialista tiene hasta 150 s para su plan.
+   seguridad → Heimdall, tests → Coulson; Nick Fury lidera por defecto) y cada especialista tiene hasta 150 s para su plan.
 2. **Ejecutor (cada turno):** recibe la conversación completa de Cline (con sus herramientas) más la **guía del
    equipo**: los planes, las reglas de funcionamiento y las reglas de seguridad de los especialistas y del ejecutor
    (leer antes de editar, cambios mínimos, nada destructivo, sin secretos en el código, verificar antes de entregar).
@@ -489,5 +500,5 @@ ruff format --check .
 ```
 
 Los agentes usan las mismas reglas con la herramienta `revisar_codigo` del MCP: Nick Fury y Coulson revisan el código
-Python que entregan y Stiuso la usa como apoyo en revisiones de seguridad. El código nunca se ejecuta: Ruff solo lo lee.
+Python que entregan y Heimdall la usa como apoyo en revisiones de seguridad. El código nunca se ejecuta: Ruff solo lo lee.
 El ejecutor de `orquestador-codigo` corre `ruff check` en tu proyecto si lo tenés instalado.

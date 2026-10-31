@@ -336,6 +336,180 @@ def recibir_evento(ev: Evento):
     return {'ok': True}
 
 
+# ---------- agentes, herramientas y skills (botones de la web) ----------
+SKILLS_DIR = Path(os.environ.get('SKILLS_DIR', '/skills'))
+CATALOGO_NVIDIA = Path(os.environ.get('CATALOGO_NVIDIA', '/catalogo/skills.json'))
+MCP_URL = os.environ.get('MCP_URL', 'http://mcp-tools:8092/mcp')
+SKILL_NVIDIA = re.compile(r'github\.com/NVIDIA/skills/tree/main/skills/([\w.-]+)')
+LEER_SKILL = re.compile(r'leer_skill\(([\w.-]+)')
+AGENTES_SISTEMA_WEB = ('orquestador', 'sintesis', 'verificador')
+
+
+def _sistema_json() -> dict:
+    """Alias y rol de los agentes de sistema (generador/agentes/_sistema.json)."""
+    try:
+        return json.loads((AGENTES_DIR / '_sistema.json').read_text(encoding='utf-8'))
+    except (OSError, ValueError):
+        return {}
+
+
+def _uso(contador: dict, clave: str, ts: float):
+    d = contador.setdefault(clave, {'usos': 0, 'ultimo': 0})
+    d['usos'] += 1
+    d['ultimo'] = max(d['ultimo'], ts)
+
+
+def _uso_agentes(con, desde: float) -> dict:
+    usos: dict = {}
+    for r in con.execute("SELECT agentes, creado FROM mensajes WHERE rol='asistente' AND agentes IS NOT NULL AND creado >= ?", (desde,)):
+        for a in {a.get('agente') for a in json.loads(r['agentes'] or '[]') if isinstance(a, dict)}:
+            if a:
+                _uso(usos, a, r['creado'])
+    for r in con.execute("SELECT agente, MAX(ts) ts, COUNT(DISTINCT msg_id) n FROM eventos WHERE tipo='modelo' AND ts >= ? "
+                         "AND agente IN (?,?,?) GROUP BY agente", (desde, *AGENTES_SISTEMA_WEB)):
+        usos[r['agente']] = {'usos': r['n'], 'ultimo': r['ts']}
+    # La síntesis no manda eventos de progreso: se cuenta por el pie de la respuesta ("· síntesis → modelo")
+    for r in con.execute("SELECT creado FROM mensajes WHERE rol='asistente' AND creado >= ? AND texto LIKE '%· síntesis →%'", (desde,)):
+        _uso(usos, 'sintesis', r['creado'])
+    return usos
+
+
+def _sesion(usos: dict, clave: str) -> dict:
+    u = usos.get(clave) or {}
+    return {'usos': u.get('usos', 0), 'ultimo': u.get('ultimo')}
+
+
+@app.get('/api/agentes')
+def agentes_web(desde: float = 0):
+    """Agentes (generador/agentes/*.json) con cuántas respuestas dieron y cuándo: en total y desde `desde` (la sesión)."""
+    with closing(db()) as con:
+        usos, sesion = _uso_agentes(con, 0), _uso_agentes(con, desde) if desde else {}
+    salida = []
+    for a in _agentes_json().values():
+        u = usos.get(a['id'], {})
+        salida.append({'id': a['id'], 'nombre': a['nombre'], 'personaje': a.get('personaje', ''), 'rol': a['rol'],
+                       'alcance': a['alcance'], 'cuando': a.get('cuando_usarlo', ''), 'skills': a.get('skills', []),
+                       'skills_inline': len(a.get('skills_inline', [])), 'categorias_nvidia': a['skills_nvidia']['categorias'],
+                       'modelos': a.get('modelos', {}), 'memoria': a.get('memoria', {}), 'reglas': len(a.get('reglas', [])),
+                       'seguridad': len(a.get('seguridad', [])), 'usos': u.get('usos', 0), 'ultimo_uso': u.get('ultimo') or None,
+                       'sesion': _sesion(sesion, a['id'])})
+    s = _sistema_json()
+    sistema = [{'id': k, 'nombre': (s.get(k) or {}).get('nombre', k), 'personaje': (s.get(k) or {}).get('personaje', ''),
+                'rol': (s.get(k) or {}).get('rol', 'Agente de sistema'), 'modelos': {'nvidia': (s.get(k) or {}).get('modelos', [])},
+                'usos': usos.get(k, {}).get('usos', 0), 'ultimo_uso': usos.get(k, {}).get('ultimo'), 'sesion': _sesion(sesion, k)}
+               for k in AGENTES_SISTEMA_WEB]
+    return {'agentes': sorted(salida, key=lambda a: (-a['usos'], a['nombre'])), 'sistema': sistema}
+
+
+_herramientas_cache = {'t': 0.0, 'datos': []}
+
+
+async def _herramientas_mcp() -> list:
+    """Lista de herramientas del servidor MCP (tools/list), cacheada 5 minutos."""
+    if time.time() - _herramientas_cache['t'] > 300 or not _herramientas_cache['datos']:
+        async with httpx.AsyncClient(timeout=15) as cli:
+            r = await cli.post(MCP_URL, headers={'X-API-Key': MCP_API_KEY, 'Accept': 'application/json, text/event-stream'},
+                               json={'jsonrpc': '2.0', 'id': 1, 'method': 'tools/list', 'params': {}})
+        tools = json.loads(r.content.decode('utf-8'))['result']['tools']
+        _herramientas_cache.update(t=time.time(), datos=[{'nombre': t['name'], 'descripcion': (t.get('description') or '').strip()}
+                                                         for t in tools])
+    return _herramientas_cache['datos']
+
+
+def _uso_herramientas(con, desde: float) -> dict:
+    usos: dict = {}
+    for r in con.execute("SELECT herramienta, ts FROM eventos WHERE tipo='herramienta' AND herramienta IS NOT NULL AND ts >= ?", (desde,)):
+        _uso(usos, r['herramienta'], r['ts'])
+    return usos
+
+
+@app.get('/api/herramientas')
+async def herramientas_web(desde: float = 0):
+    with closing(db()) as con:
+        usos, sesion = _uso_herramientas(con, 0), _uso_herramientas(con, desde) if desde else {}
+    errores, lista = [], []
+    try:
+        lista = await _herramientas_mcp()
+    except (httpx.HTTPError, ValueError, KeyError) as e:
+        errores.append(f'No se pudo consultar el servidor MCP ({MCP_URL}): {e.__class__.__name__}')
+    nombres = {h['nombre'] for h in lista}
+    lista = lista + [{'nombre': n, 'descripcion': '(ya no está en el servidor MCP)'} for n in usos if n not in nombres]
+    salida = [{**h, 'usos': usos.get(h['nombre'], {}).get('usos', 0), 'ultimo_uso': usos.get(h['nombre'], {}).get('ultimo'),
+               'sesion': _sesion(sesion, h['nombre'])} for h in lista]
+    return {'herramientas': sorted(salida, key=lambda h: (-h['usos'], h['nombre'])), 'errores': errores}
+
+
+def _uso_skills(con, desde: float) -> tuple[dict, dict]:
+    propias: dict = {}
+    nvidia: dict = {}
+    for r in con.execute("SELECT texto, ts FROM eventos WHERE tipo='herramienta' AND herramienta='leer_skill' AND ts >= ?", (desde,)):
+        m = LEER_SKILL.search(r['texto'] or '')
+        if m:
+            _uso(propias, m.group(1), r['ts'])
+    for r in con.execute("SELECT texto, creado FROM mensajes WHERE rol='asistente' AND estado='ok' AND creado >= ? "
+                         "AND texto LIKE '%NVIDIA/skills%'", (desde,)):
+        for sid in set(SKILL_NVIDIA.findall(r['texto'] or '')):
+            _uso(nvidia, sid, r['creado'])
+    return propias, nvidia
+
+
+@app.get('/api/skills')
+def skills_web(desde: float = 0):
+    """Skills del proyecto (skills/, leídas con leer_skill) y catálogo de NVIDIA (citadas en las respuestas)."""
+    agentes = _agentes_json()
+    de_agente: dict = {}
+    for a in agentes.values():
+        for s in a.get('skills', []):
+            de_agente.setdefault(s, []).append(a['nombre'])
+    with closing(db()) as con:
+        usos_propias, usos_nvidia = _uso_skills(con, 0)
+        ses_propias, ses_nvidia = _uso_skills(con, desde) if desde else ({}, {})
+    errores = []
+    try:
+        fuentes = {f['id']: f for f in json.loads((SKILLS_DIR / 'fuentes.json').read_text(encoding='utf-8'))}
+    except (OSError, ValueError):
+        fuentes = {}
+        errores.append(f'No se encontró {SKILLS_DIR}/fuentes.json')
+    propias = [{'id': sid, 'descripcion': f.get('descripcion_original', ''), 'fuente': f.get('fuente', ''), 'autor': f.get('autor', ''),
+                'licencia': f.get('licencia', ''), 'auditoria': f.get('auditoria', ''), 'agentes': de_agente.get(sid, []),
+                'usos': usos_propias.get(sid, {}).get('usos', 0), 'ultimo_uso': usos_propias.get(sid, {}).get('ultimo'),
+                'sesion': _sesion(ses_propias, sid)}
+               for sid, f in fuentes.items()]
+    nvidia = []
+    try:
+        catalogo = json.loads(CATALOGO_NVIDIA.read_text(encoding='utf-8'))
+        dueno = {c: a['nombre'] for a in agentes.values() for c in a['skills_nvidia']['categorias']}
+        nvidia = [{'id': sid, 'descripcion': desc, 'categoria': cat, 'agente': dueno.get(cat, ''),
+                   'usos': usos_nvidia.get(sid, {}).get('usos', 0), 'ultimo_uso': usos_nvidia.get(sid, {}).get('ultimo'),
+                   'sesion': _sesion(ses_nvidia, sid)}
+                  for cat, lista in catalogo.items() for sid, desc in lista]
+    except (OSError, ValueError):
+        errores.append(f'No se encontró el catálogo de NVIDIA ({CATALOGO_NVIDIA})')
+    orden = lambda s: (-s['usos'], s['id'])
+    return {'propias': sorted(propias, key=orden), 'nvidia': sorted(nvidia, key=orden), 'errores': errores}
+
+
+@app.get('/api/uso-modelos')
+def uso_modelos(desde: float = 0):
+    """Modelos usados desde `desde` (la sesión de la web), con cuántas respuestas y qué agentes los usaron."""
+    usos: dict = {}
+    with closing(db()) as con:
+        for r in con.execute("SELECT modelo, agente, msg_id, ts FROM eventos WHERE tipo='modelo' AND modelo IS NOT NULL AND ts >= ?", (desde,)):
+            d = usos.setdefault(r['modelo'], {'mensajes': set(), 'agentes': set(), 'ultimo': 0})
+            d['mensajes'].add(r['msg_id'])
+            d['agentes'].add(r['agente'] or '?')
+            d['ultimo'] = max(d['ultimo'], r['ts'])
+        for r in con.execute("SELECT id, agentes, creado FROM mensajes WHERE rol='asistente' AND agentes IS NOT NULL AND creado >= ?", (desde,)):
+            for a in json.loads(r['agentes'] or '[]'):
+                if isinstance(a, dict) and a.get('modelo'):
+                    d = usos.setdefault(a['modelo'], {'mensajes': set(), 'agentes': set(), 'ultimo': 0})
+                    d['mensajes'].add(r['id'])
+                    d['agentes'].add(a.get('agente') or '?')
+                    d['ultimo'] = max(d['ultimo'], r['creado'])
+    modelos = [{'modelo': m, 'usos': len(d['mensajes']), 'agentes': sorted(d['agentes']), 'ultimo': d['ultimo']} for m, d in usos.items()]
+    return {'modelos': sorted(modelos, key=lambda m: -m['usos'])}
+
+
 @app.get('/api/modelos')
 async def modelos():
     """Modelos remotos (NVIDIA, según el router de n8n) y locales (Ollama), con su estado y uso."""
@@ -542,7 +716,7 @@ async def chat_completions(request: Request):
 # ---------- Orquestador de código para Cline (modelo "orquestador-codigo") ----------
 # A diferencia de "orquestador", este SÍ edita el proyecto, en dos capas:
 # 1. Equipo (una vez por tarea): el planificador de n8n elige hasta 2 especialistas y cada uno arma un plan técnico
-#    aplicando sus skills (Nick Fury, Black Widow, Stiuso, Coulson...).
+#    aplicando sus skills (Nick Fury, Black Widow, Heimdall, Coulson...).
 # 2. Ejecutor (cada turno de Cline): un modelo de código recibe la conversación completa de Cline, con sus herramientas,
 #    más la guía del equipo, y responde con esas herramientas (read_file, replace_in_file, write_to_file,
 #    execute_command...). Cline las ejecuta con tu aprobación y vuelve con el resultado, hasta attempt_completion.
@@ -575,7 +749,7 @@ SEGURIDAD_EJECUTOR = [
 
 def _agentes_json() -> dict:
     out = {}
-    for f in sorted(AGENTES_DIR.glob('*.json')):
+    for f in sorted(AGENTES_DIR.glob('[!_]*.json')):   # _sistema.json: agentes de sistema
         try:
             a = json.loads(f.read_text(encoding='utf-8'))
             out[a['id']] = a

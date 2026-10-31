@@ -33,6 +33,11 @@ export const api = {
   enviar: (id, texto, adjunto) => pedir(`/api/chats/${id}/mensajes`, { method: 'POST', body: { texto, adjunto } }),
   reintentar: msgId => pedir(`/api/mensajes/${msgId}/reintentar`, { method: 'POST' }),
   modelos: () => pedir('/api/modelos'),
+  // desde: inicio de la sesión de la web (segundos); el servidor devuelve además el uso desde ese momento
+  agentes: desde => pedir(`/api/agentes?desde=${desde || 0}`),
+  herramientas: desde => pedir(`/api/herramientas?desde=${desde || 0}`),
+  skills: desde => pedir(`/api/skills?desde=${desde || 0}`),
+  usoModelos: desde => pedir(`/api/uso-modelos?desde=${desde || 0}`),
   salud: () => pedir('/api/health'),
 };
 

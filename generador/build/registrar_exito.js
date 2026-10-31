@@ -23,17 +23,17 @@ if (pensado && pensado.trim()) await avisar('razonamiento', pensado.trim().repla
 if (prev.agent === 'orquestador') {
   let plan = [];
   try { plan = JSON.parse((output.replace(/```(json)?/g, '').match(/\{[\s\S]*\}/) || ['{}'])[0]).plan || []; } catch (e) {}
-  await avisar('plan', plan.length ? `Plan: ${plan.map(p => `${p.agente} → ${String(p.tarea).slice(0, 70)}`).join(' · ')}` : 'Plan listo',
+  await avisar('plan', plan.length ? `Plan de ${prev.agente_nombre || 'orquestador'}: ${plan.map(p => `${p.agente} → ${String(p.tarea).slice(0, 70)}`).join(' · ')}` : 'Plan listo',
     { datos: plan });
 } else if (prev.agent === 'verificador') {
   let v = {};
   try { v = JSON.parse((output.replace(/```(json)?/g, '').match(/\{[\s\S]*\}/) || ['{}'])[0]); } catch (e) {}
   const falta = (v.faltantes || []).filter(Boolean);
   await avisar('verificacion', v.cumple === false && falta.length
-    ? `Revisión: falta ${falta.join('; ').slice(0, 200)} — se completa`
-    : 'Revisión: la respuesta cumple todo lo pedido');
+    ? `Revisión de ${prev.agente_nombre || 'verificador'}: falta ${falta.join('; ').slice(0, 200)} — se completa`
+    : `Revisión de ${prev.agente_nombre || 'verificador'}: la respuesta cumple todo lo pedido`);
 } else {
-  await avisar('listo', prev.agent === 'sintesis' ? 'Respuesta integrada' : `${prev.agente_nombre || prev.agent} terminó`);
+  await avisar('listo', prev.agent === 'sintesis' ? `Respuesta integrada por ${prev.agente_nombre || 'síntesis'}` : `${prev.agente_nombre || prev.agent} terminó`);
 }
 
 return {

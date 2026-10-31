@@ -166,6 +166,9 @@ services:
       - ./orquestador-web/data:/data
       # Agentes (generador/agentes/*.json): el orquestador de código para Cline arma su equipo con ellos
       - ./generador/agentes:/agentes:ro
+      # Botón "Skills" de la web: skills del proyecto y catálogo de NVIDIA (solo lectura)
+      - ./skills:/skills:ro
+      - ./generador/build/skills.json:/catalogo/skills.json:ro
     environment:
       - WEB_ACCESS_TOKEN=${WEB_ACCESS_TOKEN:?Falta WEB_ACCESS_TOKEN en .env}
       # API compatible con OpenAI (/v1) para Cline
@@ -178,6 +181,7 @@ services:
       - N8N_AGENTE=${N8N_INTERNAL_URL:-http://n8n-container:5678}/webhook/agente-especialista
       - N8N_LLM_PROXY=${N8N_INTERNAL_URL:-http://n8n-container:5678}/webhook/llm-proxy
       - ROUTER_URL=${MCP_ROUTER_URL:-http://mcp-tools:8092/router}
+      - MCP_URL=${MCP_URL:-http://mcp-tools:8092/mcp}
       - MCP_API_KEY=${MCP_API_KEY}
       - CLINE_EJECUTORES=${CLINE_EJECUTORES:-deepseek-ai/deepseek-v4.1-flash,minimaxai/minimax-m3.1-flash,nvidia/nemotron-3-ultra-550b-a55b,poolside/laguna-xs-2.1}
       - OLLAMA_URL=${OLLAMA_URL:-http://ollama:11434}

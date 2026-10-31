@@ -1,0 +1,20 @@
+{
+  "orquestador": {
+    "nombre": "Captain America",
+    "personaje": "Steve Rogers, que arma el plan y reparte las misiones del equipo",
+    "rol": "Planificador: divide el pedido en subtareas y asigna los agentes",
+    "modelos": ["nvidia/nemotron-3-ultra-550b-a55b", "deepseek-ai/deepseek-v4.1-flash", "minimaxai/minimax-m3.1-flash", "mistralai/mistral-large-4-1t-a52b"]
+  },
+  "sintesis": {
+    "nombre": "Vision",
+    "personaje": "Vision, que integra todo en una sola mente",
+    "rol": "Síntesis: integra las respuestas de los agentes en una sola",
+    "modelos": ["nvidia/nemotron-3-ultra-550b-a55b", "deepseek-ai/deepseek-v4.1-flash", "mistralai/mistral-large-4-1t-a52b", "nvidia/nemotron-3.5-lightning-30b-a3b"]
+  },
+  "verificador": {
+    "nombre": "Doctor Strange",
+    "personaje": "Stephen Strange, que revisa todos los resultados posibles antes de entregar",
+    "rol": "Verificador: revisa que la respuesta cumpla todo lo pedido",
+    "modelos": ["nvidia/nemotron-3.5-lightning-30b-a3b", "deepseek-ai/deepseek-v4.1-flash", "minimaxai/minimax-m3.1-flash", "nvidia/nemotron-3-ultra-550b-a55b"]
+  }
+}

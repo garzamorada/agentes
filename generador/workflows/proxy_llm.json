@@ -8,7 +8,7 @@
         "responseMode": "lastNode",
         "options": {}
       },
-      "id": "7a89bb2f-9d8a-4658-84da-03ae9f2f4850",
+      "id": "ac8508ad-c6ce-4a12-9bc1-a6b0c8b63efc",
       "name": "Webhook (proxy LLM)",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
@@ -16,13 +16,13 @@
         0,
         0
       ],
-      "webhookId": "e1cbfc95-be3f-41af-9659-b9bd65b74a85"
+      "webhookId": "b790892b-b14b-4477-930e-a6b3a95e8c10"
     },
     {
       "parameters": {
         "jsCode": "// Pedido: { cuerpo: { model, messages, tools?, temperature?, max_tokens? } }  (header X-API-Key = N8N_WEBHOOK_TOKEN)\nconst h = $input.first().json.headers || {};\nif ((h['x-api-key'] || '') !== $env.N8N_WEBHOOK_TOKEN) throw new Error('No autorizado: falta o es incorrecto el header X-API-Key');\nconst c = ($input.first().json.body || {}).cuerpo || {};\nif (!c.model || String(c.model).startsWith('ollama/') || !Array.isArray(c.messages) || !c.messages.length) {\n  throw new Error('Pedido inválido: hacen falta model (NVIDIA) y messages');\n}\n// Solo se reenvían los campos conocidos de la API de chat\nconst cuerpo = { model: c.model, messages: c.messages, stream: false,\n  temperature: c.temperature ?? 0.2, max_tokens: Math.min(Number(c.max_tokens) || 8192, 16384) };\nif (Array.isArray(c.tools) && c.tools.length) { cuerpo.tools = c.tools; if (c.tool_choice) cuerpo.tool_choice = c.tool_choice; }\nreturn [{ json: { cuerpo } }];"
       },
-      "id": "afeaaf72-0dcb-4044-9ef8-2e862e3bb6f8",
+      "id": "1b21e4a9-3368-4f2a-a524-0e91fda30400",
       "name": "Validar pedido",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -50,7 +50,7 @@
           }
         }
       },
-      "id": "9e061acc-dcb0-4961-bd17-607cfe0d3c75",
+      "id": "565ad9af-8626-4293-b299-b5cc204d0930",
       "name": "API de NVIDIA",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
@@ -70,7 +70,7 @@
       "parameters": {
         "jsCode": "// Devuelve el estado HTTP y el cuerpo de la API de NVIDIA (también en errores: 429, 5xx...)\nconst r = $input.first().json;\nif (r.error && r.statusCode === undefined) return [{ json: { status: 599, body: { error: String(r.error.message || r.error) } } }];\nreturn [{ json: { status: r.statusCode, body: r.body } }];"
       },
-      "id": "da8d27d7-3557-4d38-8481-82a53d01d82a",
+      "id": "7afab568-1125-4521-ae8b-e3575006d49a",
       "name": "Respuesta",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -85,7 +85,7 @@
         "width": 480,
         "height": 200
       },
-      "id": "bd4e8a8f-f456-4246-b10e-f415f958efdd",
+      "id": "a9d90b2a-a759-45ce-91a2-25380d76aafa",
       "name": "Nota",
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,

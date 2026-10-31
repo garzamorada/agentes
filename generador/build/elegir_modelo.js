@@ -56,8 +56,9 @@ if (!chosen) {
   return { json: { ...j, _router: r, action: 'agotado' } };
 }
 
-const que = j.agent === 'orquestador' ? 'Planificando el pedido' : j.agent === 'sintesis' ? 'Integrando las respuestas'
-  : j.agent === 'verificador' ? 'Revisando que la respuesta cumpla todo lo pedido'
+const quien = j.agente_nombre && j.agente_nombre !== j.agent ? `${j.agente_nombre}: ` : '';
+const que = j.agent === 'orquestador' ? `${quien}planificando el pedido` : j.agent === 'sintesis' ? `${quien}integrando las respuestas`
+  : j.agent === 'verificador' ? `${quien}revisando que la respuesta cumpla todo lo pedido`
   : j.fase === 'correccion' ? `${j.agente_nombre || j.agent}: completando lo que faltó` : `${j.agente_nombre || j.agent}: trabajando`;
 await avisar('modelo', `${que} con ${corto(chosen)}${r.tried.length ? ' (reintento)' : ''}`,
   { modelo: chosen, proveedor: isOllama(chosen) ? 'ollama' : 'nvidia' });
