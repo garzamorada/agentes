@@ -34,12 +34,6 @@ const CONFIG = {
     'ollama/nemotron-3-nano:4b':               { rpm: 30 },
     'ollama/qwen3:14b':                        { rpm: 30 },
     'ollama/gemma4:12b':                       { rpm: 30 },
-    'ollama/gemma4:latest':                    { rpm: 30 },
-    'ollama/llama3.1:8b':                      { rpm: 30 },
-    'ollama/qwen2.5-coder:7b':                 { rpm: 30 },
-    'ollama/glm4:latest':                      { rpm: 30 },
-    // Modelo cloud servido a través de Ollama (tiene cuota propia en ollama.com)
-    'ollama/deepseek-v4-flash:cloud':          { rpm: 10, rpd: 300 },
   },
   // Orden de preferencia NVIDIA por especialidad (el primero es el ideal).
   // Medido 30/10/2026: mistral-large-4 es lento (~20s+ razonando); glm-5.3, gemma-4,
@@ -61,14 +55,14 @@ const CONFIG = {
     infra_redes:              ['minimaxai/minimax-m3.1-flash', 'nvidia/nemotron-3-ultra-550b-a55b', 'deepseek-ai/deepseek-v4.1-flash', 'poolside/laguna-xs-2.1'],
     salud_ciencias:           ['nvidia/nemotron-3-ultra-550b-a55b', 'mistralai/mistral-large-4-1t-a52b', 'deepseek-ai/deepseek-v4.1-flash', 'google/gemma-4-31b-it'],
   },
-  // Modelos locales por especialidad (todos soportan tool calling).
-  // nemotron-3.5-bolt:e4b (7,2 GB) y nemotron-3-nano:4b (2,8 GB) entran juntos en la GPU de 12 GB,
-  // ~100 tok/s cada uno (medido 30/10/2026): las dos primeras posiciones se alternan por "slot".
+  // Modelos locales por especialidad (todos soportan tool calling). Instalados (31/10/2026):
+  // nemotron-3.5-bolt:e4b (7,9 GB) y nemotron-3-nano:4b (2,8 GB) entran juntos en la GPU de 12 GB y se alternan
+  // por "slot"; qwen3:14b (9,3 GB) es el de mejor calidad para razonar y código; gemma4:12b (8 GB) entiende imágenes.
   ollama: {
-    default:     ['ollama/nemotron-3.5-bolt:e4b', 'ollama/nemotron-3-nano:4b', 'ollama/qwen3:14b', 'ollama/gemma4:12b', 'ollama/llama3.1:8b', 'ollama/glm4:latest'],
-    gpu_dev:     ['ollama/qwen2.5-coder:7b', 'ollama/qwen3:14b', 'ollama/gemma4:12b'],
-    infra_redes: ['ollama/qwen2.5-coder:7b', 'ollama/qwen3:14b', 'ollama/gemma4:12b'],
-    vision:      ['ollama/nemotron-3.5-bolt:e4b', 'ollama/gemma4:12b', 'ollama/qwen3:14b', 'ollama/llama3.1:8b'],
+    default:     ['ollama/nemotron-3.5-bolt:e4b', 'ollama/nemotron-3-nano:4b', 'ollama/qwen3:14b', 'ollama/gemma4:12b'],
+    gpu_dev:     ['ollama/qwen3:14b', 'ollama/gemma4:12b'],
+    infra_redes: ['ollama/qwen3:14b', 'ollama/gemma4:12b'],
+    vision:      ['ollama/gemma4:12b', 'ollama/nemotron-3.5-bolt:e4b', 'ollama/qwen3:14b'],
   },
   // Si se agota toda la lista del agente, sigue con estos
   fallbackGeneral: [

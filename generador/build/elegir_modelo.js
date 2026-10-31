@@ -1,11 +1,9 @@
 // La configuración (CONFIG) está en config_modelos.js; gen.py la antepone a este código.
 const isOllama = m => m.startsWith('ollama/');
-const now = Date.now();
-const today = new Date().toISOString().slice(0, 10);
-const st = $getWorkflowStaticData('global');
-st.models = st.models || {};
-st.config = CONFIG;
-st.global = (st.global || []).filter(t => now - t < 60000);
+// Estado compartido (usos, pausas) en mcp-tools: el "static data" de n8n se pisa entre ejecuciones en paralelo
+const ROUTER = $env.MCP_URL.replace(/\/mcp\/?$/, '') + '/router';
+const router = (ruta, body) => this.helpers.httpRequest({ method: 'POST', url: `${ROUTER}/${ruta}`, json: true, timeout: 5000,
+  headers: { 'X-API-Key': $env.MCP_API_KEY }, body });
 
 const j = { ...$input.item.json };
 delete j.action; delete j.waitSeconds; delete j.model; delete j.modelName; delete j.provider;
@@ -20,7 +18,7 @@ const avisar = (tipo, texto, extra = {}) => j.session_id
   : null;
 
 const nvidia = [...(CONFIG.agents[j.agent] || []), ...CONFIG.fallbackGeneral];
-const local = [...(CONFIG.ollama[j.agent] || CONFIG.ollama.default), ...CONFIG.ollama.default, 'ollama/deepseek-v4-flash:cloud'];
+const local = [...(CONFIG.ollama[j.agent] || CONFIG.ollama.default), ...CONFIG.ollama.default];
 // Los especialistas llevan el catálogo de skills en el prompt (miles de tokens):
 // van a NVIDIA aunque la tarea sea simple, así Ollama queda libre para el agente general.
 const localPrimero = j.agent === 'general' && j.complejidad === 'simple';
@@ -28,44 +26,35 @@ const localPrimero = j.agent === 'general' && j.complejidad === 'simple';
 if (localPrimero && Number(j.slot) % 2 === 1) local.splice(0, 2, local[1], local[0]);
 const order = [...new Set(localPrimero ? [...local, ...nvidia] : [...nvidia, ...local])];
 
-let chosen = null, soonest = Infinity;
+// mcp-tools elige el primer modelo con cupo y registra el uso en el mismo paso (atómico entre agentes en paralelo)
+let res = { accion: 'ninguno', espera_ms: null };
 if (r.tried.length < CONFIG.maxIntentos) {
-  for (const m of order) {
-    if (r.tried.includes(m)) continue;
-    const s = st.models[m] = st.models[m] || {};
-    s.minute = (s.minute || []).filter(t => now - t < 60000);
-    if (!s.day || s.day.date !== today) s.day = { date: today, count: 0 };
-    const lim = CONFIG.models[m] || {};
-    if (s.cooldownUntil && s.cooldownUntil > now) { soonest = Math.min(soonest, s.cooldownUntil); continue; }
-    if (lim.rpd && s.day.count >= lim.rpd) continue;                      // cupo diario agotado
-    if (lim.rpm && s.minute.length >= lim.rpm) { soonest = Math.min(soonest, s.minute[0] + 60000); continue; }
-    chosen = m; break;
+  try {
+    res = await router('reservar', { orden: order, intentados: r.tried, limites: CONFIG.models, global_rpm: CONFIG.globalRpmNvidia });
+  } catch (e) {
+    // Sin mcp-tools no hay registro de cupos: se sigue con el primer modelo no probado
+    const m = order.find(m => !r.tried.includes(m));
+    res = m ? { accion: 'llamar', modelo: m } : res;
   }
 }
+const chosen = res.accion === 'llamar' ? res.modelo : null;
 
 // Límite global de la cuenta NVIDIA: esperar a que se libere la ventana de 1 minuto
-if (chosen && !isOllama(chosen) && st.global.length >= CONFIG.globalRpmNvidia) {
-  const waitSeconds = Math.ceil((st.global[0] + 60000 - now) / 1000) + 1;
+if (res.accion === 'esperar') {
+  const waitSeconds = Math.ceil(res.espera_ms / 1000) + 1;
   await avisar('espera', `Esperando cupo de la cuenta NVIDIA (${waitSeconds} s)`);
-  return { json: { ...j, _router: { ...r, waits: r.waits + 1 }, action: 'esperar', waitSeconds, motivo: 'limite_global_rpm' } };
+  return { json: { ...j, _router: { ...r, waits: r.waits + 1 }, action: 'esperar', waitSeconds, motivo: res.motivo } };
 }
 
 if (!chosen) {
-  const waitSeconds = Math.ceil((soonest - now) / 1000) + 1;
-  if (isFinite(soonest) && waitSeconds <= CONFIG.maxEsperaSeg && r.waits < CONFIG.maxEsperas && r.tried.length < CONFIG.maxIntentos) {
+  const waitSeconds = Math.ceil((res.espera_ms ?? Infinity) / 1000) + 1;
+  if (isFinite(waitSeconds) && waitSeconds <= CONFIG.maxEsperaSeg && r.waits < CONFIG.maxEsperas && r.tried.length < CONFIG.maxIntentos) {
     await avisar('espera', `Modelos ocupados o en pausa: esperando ${waitSeconds} s`);
     return { json: { ...j, _router: { ...r, waits: r.waits + 1 }, action: 'esperar', waitSeconds, motivo: 'modelos_en_cooldown' } };
   }
   await avisar('error', `Sin modelos disponibles para ${j.agent}`);
   return { json: { ...j, _router: r, action: 'agotado' } };
 }
-
-// Registrar el uso
-const s = st.models[chosen];
-s.minute.push(now);
-s.day.count++;
-s.lastUsed = new Date(now).toISOString();
-if (!isOllama(chosen)) st.global.push(now);
 
 const que = j.agent === 'orquestador' ? 'Planificando el pedido' : j.agent === 'sintesis' ? 'Integrando las respuestas'
   : j.agent === 'verificador' ? 'Revisando que la respuesta cumpla todo lo pedido'

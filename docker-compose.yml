@@ -137,6 +137,8 @@ services:
       - "${BIND_IP:-127.0.0.1}:${MCP_PORT:-8092}:8092"
     volumes:
       - ./documentos_generados:/data
+      # Estado del router de modelos de n8n (usos, pausas, errores)
+      - router_estado:/estado
     environment:
       - MCP_API_KEY=${MCP_API_KEY:?Falta MCP_API_KEY en .env}
       - PUBLIC_URL=${DOC_PUBLIC_URL:-http://localhost:8090}
@@ -175,6 +177,8 @@ volumes:
   # Modelos de Ollama (volumen de Docker: mucho más rápido que una carpeta de Windows para cargarlos en la GPU)
   ollama:
     name: agentes_ollama
-  # Pesos de Stable Diffusion XL / Lightning (~7 GB, se descargan la primera vez)
+  # Pesos de FLUX.2 klein (~16 GB, se descargan la primera vez)
   imagen_modelos:
     name: agentes_imagen_modelos
+  router_estado:
+    name: agentes_router_estado

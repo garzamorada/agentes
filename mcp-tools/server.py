@@ -24,6 +24,7 @@ from starlette.responses import JSONResponse, PlainTextResponse
 import basicas
 import lectura
 import navegador as nav
+import router_estado
 import selenium_nav
 import imagenes
 
@@ -382,15 +383,40 @@ async def reglas(_: Request):
     return PlainTextResponse(REGLAS)
 
 
+# Estado compartido del router de modelos de n8n (ver router_estado.py): los agentes en paralelo no se pisan
+@mcp.custom_route('/router/reservar', methods=['POST'])
+async def router_reservar(req: Request):
+    b = await req.json()
+    return JSONResponse(router_estado.reservar(b.get('orden') or [], b.get('intentados') or [],
+                                               b.get('limites') or {}, int(b.get('global_rpm') or 36)))
+
+
+@mcp.custom_route('/router/fallo', methods=['POST'])
+async def router_fallo(req: Request):
+    b = await req.json()
+    return JSONResponse(router_estado.fallo(str(b.get('modelo') or ''), b.get('error')))
+
+
+@mcp.custom_route('/router/exito', methods=['POST'])
+async def router_exito(req: Request):
+    b = await req.json()
+    return JSONResponse(router_estado.exito(str(b.get('modelo') or '')))
+
+
+@mcp.custom_route('/router/estado', methods=['GET'])
+async def router_ver(_: Request):
+    return JSONResponse(router_estado.ver())
+
+
 # ---------- seguridad ----------
 class RequiereClave:
-    """Middleware ASGI: /mcp solo con la clave. /health y /reglas quedan libres (no exponen datos)."""
+    """Middleware ASGI: /mcp y /router solo con la clave. /health y /reglas quedan libres (no exponen datos)."""
 
     def __init__(self, app):
         self.app = app
 
     async def __call__(self, scope, receive, send):
-        if scope['type'] == 'http' and scope['path'].startswith('/mcp'):
+        if scope['type'] == 'http' and scope['path'].startswith(('/mcp', '/router')):
             h = {k.decode().lower(): v.decode() for k, v in scope.get('headers', [])}
             q = dict(p.split('=', 1) for p in scope.get('query_string', b'').decode().split('&') if '=' in p)
             dada = h.get('x-api-key') or h.get('authorization', '').removeprefix('Bearer ').strip() or q.get('key', '')

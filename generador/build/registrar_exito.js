@@ -7,8 +7,9 @@ const avisar = (tipo, texto, extra = {}) => prev.session_id
       headers: { 'X-API-Key': $env.WEB_EVENTOS_TOKEN },
       body: { chat: prev.session_id, tipo, texto, agente: prev.agent, modelo: prev.model, ...extra } }).catch(() => null)
   : null;
-const st = $getWorkflowStaticData('global');
-if (st.models && st.models[prev.model]) st.models[prev.model].strikes = 0;
+// Estado compartido en mcp-tools: el modelo respondió, se le borran los avisos de límite
+await this.helpers.httpRequest({ method: 'POST', url: $env.MCP_URL.replace(/\/mcp\/?$/, '') + '/router/exito', json: true, timeout: 5000,
+  headers: { 'X-API-Key': $env.MCP_API_KEY }, body: { modelo: prev.model } }).catch(() => null);
 
 // Algunos modelos de razonamiento devuelven <think>...</think>
 const crudo = String($json.output ?? $json.text ?? '');

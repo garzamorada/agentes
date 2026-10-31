@@ -12,24 +12,10 @@ const avisar = (tipo, texto, extra = {}) => prev.session_id
 const e = $json.error;
 const err = e ? String(e.message || e.description || e).slice(0, 500) : 'respuesta vacía del modelo';
 
-const st = $getWorkflowStaticData('global');
-st.models = st.models || {};
-const s = st.models[prev.model] = st.models[prev.model] || {};
-
-let tipo = 'otro', cooldown = 0;
-if (/429|rate.?limit|too many requests|quota|exceeded|credits/i.test(err)) {
-  tipo = 'limite';
-  s.strikes = (s.strikes || 0) + 1;
-  cooldown = Math.min(60000 * 2 ** (s.strikes - 1), 15 * 60000);   // 1, 2, 4, 8, 15 min
-} else if (/404|410|not found|does not exist|deprecated|no longer/i.test(err)) {
-  tipo = 'no_disponible';
-  cooldown = 24 * 3600000;
-} else if (/5\d\d|timeout|timed out|ECONN|socket|overloaded|unavailable|bad gateway/i.test(err)) {
-  tipo = 'caido';
-  cooldown = 2 * 60000;
-}
-if (cooldown) s.cooldownUntil = Date.now() + cooldown;
-s.lastError = { at: new Date().toISOString(), tipo, error: err.slice(0, 200) };
+// mcp-tools clasifica el error y pone al modelo en pausa (estado compartido entre agentes en paralelo)
+const { tipo } = await this.helpers.httpRequest({ method: 'POST', url: $env.MCP_URL.replace(/\/mcp\/?$/, '') + '/router/fallo',
+  json: true, timeout: 5000, headers: { 'X-API-Key': $env.MCP_API_KEY }, body: { modelo: prev.model, error: err } })
+  .catch(() => ({ tipo: 'otro' }));
 const motivo = { limite: 'límite de uso', no_disponible: 'no disponible', caido: 'caído o lento', otro: err.slice(0, 60) }[tipo];
 await avisar('fallo', `${corto(prev.model)} falló (${motivo}); probando otro modelo`);
 

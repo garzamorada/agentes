@@ -1,7 +1,9 @@
 // Devuelve la configuración del router y el uso registrado de cada modelo (lo consulta la web local)
 const h = $input.first().json.headers || {};
 if ((h['x-api-key'] || '') !== $env.N8N_WEBHOOK_TOKEN) throw new Error('No autorizado: falta o es incorrecto el header X-API-Key');
-const st = $getWorkflowStaticData('global');
+// Uso registrado: vive en mcp-tools (compartido entre los agentes en paralelo)
+const st = await this.helpers.httpRequest({ method: 'GET', url: $env.MCP_URL.replace(/\/mcp\/?$/, '') + '/router/estado', json: true,
+  timeout: 5000, headers: { 'X-API-Key': $env.MCP_API_KEY } }).catch(() => ({}));
 const ahora = Date.now();
 const hoy = new Date().toISOString().slice(0, 10);
 const usados = (st.global || []).filter(t => ahora - t < 60000).length;

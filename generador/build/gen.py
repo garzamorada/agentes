@@ -64,7 +64,7 @@ catalog['visualizacion'] = {
         'grafico-crear — Gráfico PNG/SVG con crear_grafico: barras, horizontales, apiladas, línea, área, torta, dona, dispersión, histograma, mapa de calor',
         'grafico-desde-datos — Graficar datos de un adjunto, una tabla del usuario o una página web (navegador → extraer tablas), citando la fuente',
         'diagrama-crear — Flujos, procesos, organigramas, arquitecturas y mapas conceptuales con crear_diagrama (nunca Mermaid ni ASCII)',
-        'imagen-ia — Imágenes nuevas con IA (Stable Diffusion XL en la GPU) con generar_imagen: fotos, ilustraciones, logos, fondos, escenas',
+        'imagen-ia — Imágenes nuevas con IA (FLUX.2 klein en la GPU; escribe textos cortos) con generar_imagen: fotos, ilustraciones, logos, fondos, escenas',
         'imagen-portada — Portadas, banners y placas para redes con texto legible con crear_imagen (tamaños y colores a medida)',
         'imagen-editar — Redimensionar, recortar, agregar texto, collage, convertir, rotar, grises y borde con editar_imagen',
         'infografia-documento — Informes visuales: varios gráficos y diagramas en un PDF, Word, Excel o HTML con generar_documento',
@@ -343,11 +343,13 @@ sub_nodes = [
           'options': {'systemMessage': '={{ $json.systemPrompt }}{{ $json.contexto ? "\\n\\n## Contexto\\n" + $json.contexto : "" }}',
                       'maxIterations': 10}},
          onError='continueErrorOutput'),
-    # Memoria por chat + agente; sin ID de sesión (o en la síntesis) queda una memoria descartable de esta ejecución
+    # Memoria por chat + agente; sin ID de sesión (o en la síntesis) queda una memoria descartable de esta ejecución.
+    # Si el plan tiene varias subtareas del mismo agente corriendo en paralelo, la segunda en adelante (slot > 0)
+    # usa su propia memoria para no mezclarse con la primera.
     node('Simple Memory', '@n8n/n8n-nodes-langchain.memoryBufferWindow', 1.4, [1100, 360],
          {'sessionIdType': 'customKey', 'contextWindowLength': 5,
           'sessionKey': "={{ $json.session_id && !['sintesis', 'verificador'].includes($json.agent) ? $json.session_id + ':' + $json.agent"
-                        " : 'sin-memoria:' + $execution.id + ':' + $json.agent + ':' + $json.slot }}"}),
+                        " + ($json.slot ? ':' + $json.slot : '') : 'sin-memoria:' + $execution.id + ':' + $json.agent + ':' + $json.slot }}"}),
     selector, nvidia_llm, ollama_llm, *tools,
     # Respuesta vacía (pasa con modelos locales chicos): se trata como falla y se prueba el siguiente modelo
     node('¿Respondió algo?', 'n8n-nodes-base.if', 2.2, [1240, -60],
