@@ -1,0 +1,9 @@
+mcp==1.27.2
+httpx==0.28.1
+beautifulsoup4==4.12.3
+playwright==1.49.1
+pypdf==5.1.0
+openpyxl==3.1.5
+xlrd==2.0.1
+python-docx==1.1.2
+selenium==4.27.1

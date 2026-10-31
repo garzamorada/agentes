@@ -1,0 +1,12 @@
+{
+  "sub": "1HASjDrndeaxm75n",
+  "orq": "FE3jADCHdeDl5SeH",
+  "nvidia_cred": {
+    "id": "PnIocs172tEX8ebB",
+    "name": "OpenAI account"
+  },
+  "ollama_cred": {
+    "id": "eoWxdI8LjuxpVWtS",
+    "name": "Ollama account"
+  }
+}

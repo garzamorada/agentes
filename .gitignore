@@ -1,0 +1,33 @@
+# ---------- Secretos y configuración local ----------
+# Las claves van en .env (plantilla sin datos: .env.default)
+.env
+.env.*
+!.env.default
+
+# ---------- Datos locales ----------
+# n8n: base con workflows, credenciales cifradas (API key de NVIDIA), historial y la clave de cifrado (config)
+n8n/n8n_data/
+# Registro de chats de la web
+orquestador-web/data/
+# Archivos generados por los agentes y capturas del navegador
+documentos_generados/
+*.sqlite
+*.sqlite-*
+*.db
+
+# ---------- Dependencias y builds ----------
+node_modules/
+dist/
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# ---------- Sistema, editores y herramientas ----------
+.DS_Store
+Thumbs.db
+desktop.ini
+.vscode/
+.idea/
+*.log
+.claude/settings.local.json

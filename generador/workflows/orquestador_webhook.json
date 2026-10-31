@@ -1,0 +1,668 @@
+{
+  "name": "NVIDIA · Orquestador (webhook para la web)",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "orquestador",
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "id": "7e965b01-6afa-4f13-96f7-f0c25df00f03",
+      "name": "Webhook (web)",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        0,
+        0
+      ],
+      "webhookId": "901db12a-0958-4288-8bc3-4163f13e74b2"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Pedido de la web: { mensaje, historial: [{rol, texto}], adjunto: {base64, nombre, mime} }\nconst h = $input.first().json.headers || {};\nif ((h['x-api-key'] || '') !== $env.N8N_WEBHOOK_TOKEN) throw new Error('No autorizado: falta o es incorrecto el header X-API-Key');\nconst b = $input.first().json.body || $input.first().json;\nconst msg = String(b.mensaje || b.message || '').trim();\nconst hist = (Array.isArray(b.historial) ? b.historial : []).slice(-8);\nconst histTxt = hist.map(h => `${h.rol === 'usuario' ? 'Usuario' : 'Asistente'}: ${String(h.texto || '').slice(0, 2000)}`).join('\\n\\n');\nconst original = histTxt\n  ? `Conversación previa (contexto; respondé solo el pedido actual):\\n${histTxt}\\n\\nPedido actual del usuario: ${msg}`\n  : msg;\nconst a = b.adjunto;\nconst adjunto = a && a.base64 ? { base64: a.base64, nombre: a.nombre || 'archivo', mime: a.mime || '' } : null;\nconst contexto = histTxt ? `Conversación previa (respondé solo el pedido actual):\n${histTxt}` : '';\nreturn [{ json: { agent: 'orquestador', prompt: msg, contexto, mensaje_original: original, mensaje_usuario: msg, complejidad: 'compleja', adjunto,\n  session_id: b.session_id ? String(b.session_id) : null } }];"
+      },
+      "id": "9be7dd17-a87b-4693-ae43-8738d16d0dae",
+      "name": "Preparar pedido",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        220,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "052fd61f-e59f-46a0-b122-b0d78661f41d",
+              "leftValue": "={{ $json.adjunto }}",
+              "rightValue": "",
+              "operator": {
+                "type": "object",
+                "operation": "exists",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "1355a5f4-5c1d-4cfe-9f50-ee15dad7f234",
+      "name": "¿Adjuntó archivo?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        440,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "endpointUrl": "={{ $env.MCP_URL }}?perfil=adjuntos&key={{ $env.MCP_API_KEY }}",
+        "serverTransport": "httpStreamable",
+        "tool": {
+          "__rl": true,
+          "mode": "id",
+          "value": "leer_archivo"
+        },
+        "inputMode": "json",
+        "jsonInput": "={{ JSON.stringify({ contenido_base64: $json.adjunto.base64, nombre: $json.adjunto.nombre, mime: $json.adjunto.mime || \"\" }) }}",
+        "options": {
+          "timeout": 120000
+        }
+      },
+      "id": "e19d7ed8-cd3a-4f56-8646-25047c9e4bdc",
+      "name": "Leer adjunto",
+      "type": "@n8n/n8n-nodes-langchain.mcpClient",
+      "typeVersion": 1.1,
+      "position": [
+        660,
+        -140
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Suma el texto del adjunto al pedido\nconst pedido = $('Preparar pedido').first().json;\n// Resultado de la herramienta MCP leer_archivo: {archivo, tipo, truncado, texto}\nconst r = $input.first().json;\nconst sc = r.structuredContent;\nconst a = (sc && (sc.result || sc)) || r.content?.[0]?.text || {};\nconst textoAdjunto = `Archivo adjunto \"${a.archivo}\" (${a.tipo}${a.truncado ? ', recortado' : ''}):\\n${a.texto}`;\nreturn [{ json: { ...pedido, adjunto: null, textoAdjunto, prompt: `${pedido.mensaje_original}\\n\\n${textoAdjunto}` } }];"
+      },
+      "id": "b8e31755-d6b7-4057-b345-4dfe0744974a",
+      "name": "Agregar texto del adjunto",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        880,
+        -140
+      ]
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "1HASjDrndeaxm75n",
+          "mode": "id"
+        },
+        "mode": "once",
+        "options": {
+          "waitForSubWorkflow": true
+        }
+      },
+      "id": "802697b1-c9bd-4751-805f-9dac6554773a",
+      "name": "Orquestador: planificar",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.2,
+      "position": [
+        1100,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Convierte el plan JSON del orquestador en un ítem por subtarea.\nconst VALIDOS = ['general','agentic_ai','fisica_robotica','vision','entrenamiento_inferencia','datos_optimizacion','gpu_dev','infra_redes','salud_ciencias'];\nconst original = $('Preparar pedido').first().json.mensaje_original;\nlet adjunto = '';\ntry { adjunto = $('Agregar texto del adjunto').first().json.textoAdjunto || ''; } catch (e) {}\nconst r = $input.first().json;\nlet plan = [];\ntry {\n  const txt = String(r.output || '').replace(/```(json)?/g, '');\n  const m = txt.match(/\\{[\\s\\S]*\\}/);\n  plan = JSON.parse(m ? m[0] : txt).plan || [];\n} catch (e) {}\nplan = plan.filter(p => VALIDOS.includes(p.agente)).slice(0, 3);\nif (!plan.length) plan = [{ agente: 'general', tarea: original, complejidad: 'simple' }];\n// slot: posición entre las subtareas del mismo agente, para repartirlas entre los modelos locales\nconst vistos = {};\n// Documentos e informes con gráficos siempre como \"compleja\" (los modelos locales chicos arman mal los datos)\nconst DOC = /\\b(pdf|word|docx|excel|xlsx|planilla|informe|reporte|gr[aá]fico|markdown|documento)s?\\b/i;\n// Búsquedas y navegación web también (encadenan varias llamadas a herramientas)\nconst WEB = /\\b(busc[aáeé]\\w*|web|internet|naveg\\w*|captur\\w*|screenshot|sitio|p[aá]gina|precio|cotizaci[oó]n|noticia)s?\\b|https?:\\/\\//i;\nreturn plan.map(p => ({ json: {\n  agent: p.agente,\n  prompt: p.tarea,\n  complejidad: p.complejidad === 'simple' && !DOC.test(`${p.tarea} ${original}`) && !WEB.test(`${p.tarea} ${original}`) ? 'simple' : 'compleja',\n  slot: (vistos[p.agente] = (vistos[p.agente] ?? -1) + 1),\n  session_id: $('Preparar pedido').first().json.session_id || null,\n  contexto: `Pedido original del usuario: ${original}` + (adjunto ? `\\n\\n${adjunto}` : ''),\n} }));"
+      },
+      "id": "7a4bdaa0-075f-4a5b-a725-306ec884cb86",
+      "name": "Repartir subtareas",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1320,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.N8N_AGENTE_URL }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-API-Key",
+              "value": "={{ $env.N8N_WEBHOOK_TOKEN }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ agent: $json.agent, prompt: $json.prompt, contexto: $json.contexto, complejidad: $json.complejidad, slot: $json.slot, session_id: $json.session_id }) }}",
+        "options": {
+          "timeout": 900000
+        }
+      },
+      "id": "026a2a72-89fb-424e-8212-f15a1929b9e5",
+      "name": "Ejecutar agentes en paralelo",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1540,
+        0
+      ],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "const original = $('Preparar pedido').first().json.mensaje_original;\nconst res = $input.all().map(i => i.json);\nconst err = r => r.output || (r.error ? `Error: ${r.error.message || JSON.stringify(r.error)}` : 'sin respuesta');\n// Con un solo agente que respondió bien no hace falta sintetizar\nif (res.length === 1 && res[0].ok) {\n  return [{ json: { saltar: true, directo: res[0].output } }];\n}\nconst partes = res.map(r => `### ${r.agent || '?'} (modelo: ${r.model || 'ninguno'})\\nTarea: ${r.tarea || ''}\\n\\n${err(r)}`).join('\\n\\n---\\n\\n');\nreturn [{ json: { saltar: false, agent: 'sintesis', complejidad: 'compleja', prompt: `Pedido original:\\n${original}\\n\\nRespuestas de los agentes:\\n\\n${partes}` } }];"
+      },
+      "id": "27951e17-1423-4b96-9cb0-46aaf60d91b4",
+      "name": "Preparar síntesis",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1760,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "b7c08abb-f7b0-4f64-ae4f-7cbf35a0645f",
+              "leftValue": "={{ $json.saltar }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "false",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "f543385d-c5e7-4cc7-b364-4e1abf027079",
+      "name": "¿Hace falta síntesis?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1980,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "1HASjDrndeaxm75n",
+          "mode": "id"
+        },
+        "mode": "once",
+        "options": {
+          "waitForSubWorkflow": true
+        }
+      },
+      "id": "98a9b3d2-62cc-4921-924d-c2df3eacd577",
+      "name": "Orquestador: sintetizar",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.2,
+      "position": [
+        2200,
+        -100
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const esp = $('Ejecutar agentes en paralelo').all().map(i => i.json);\nconst j = $json;\nconst final = j.saltar ? j.directo : (j.ok ? j.output : esp.map(e => e.output || '').join('\\n\\n'));\nconst pie = esp.map(e => `${e.agent || '?'} → ${e.model || 'sin modelo'}${e.fallos_previos?.length ? ` (${e.fallos_previos.length} fallback)` : ''}`).join(' · ');\nconst sint = j.saltar ? '' : ` · síntesis → ${j.model || 'n/a'}`;\nconst pp = $('Preparar pedido').first().json;\nconst original = pp.mensaje_usuario || pp.mensaje_original;\nconst titulo = original.length > 90 ? original.slice(0, 87) + '...' : original;\nreturn [{ json: { output: `${final}\\n\\n---\\n_Agentes: ${pie}${sint}_`, titulo: titulo || 'Respuesta' } }];"
+      },
+      "id": "1efeaaa1-72e4-444c-b90d-09b01022cb53",
+      "name": "Respuesta final",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2420,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Arma el pedido para el verificador: lo que pidió el usuario + la respuesta final (sin el pie de agentes)\nconst pp = $('Preparar pedido').first().json;\nconst respuesta = String($json.output || '').replace(/\\n+---\\n_Agentes:[\\s\\S]*$/, '');\nlet adjunto = '';\ntry { adjunto = $('Agregar texto del adjunto').first().json.textoAdjunto || ''; } catch (e) {}\nconst pedido = pp.mensaje_usuario || pp.mensaje_original;\nreturn [{ json: {\n  agent: 'verificador',\n  complejidad: 'compleja',\n  session_id: pp.session_id || null,\n  prompt: `PEDIDO DEL USUARIO:\\n${pedido}\\n\\nRESPUESTA A REVISAR:\\n${respuesta}`,\n  // Conversación previa (pedidos de seguimiento como \"agregale gráficos\") y adjunto, para entender qué se pidió\n  contexto: [pp.mensaje_original !== pedido ? pp.mensaje_original : '', adjunto ? adjunto.slice(0, 3000) : ''].filter(Boolean).join('\\n\\n'),\n} }];\n"
+      },
+      "id": "dc8e1877-e523-472e-9a19-6d15eec44953",
+      "name": "Preparar verificación",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2420,
+        260
+      ]
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "1HASjDrndeaxm75n",
+          "mode": "id"
+        },
+        "mode": "once",
+        "options": {
+          "waitForSubWorkflow": true
+        }
+      },
+      "id": "fea264c9-2de3-452c-9127-43e91a2bfa5a",
+      "name": "Orquestador: verificar",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.2,
+      "position": [
+        2640,
+        260
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Lee el veredicto del verificador. Si falta algo, arma el pedido de corrección para el agente principal.\n// Si el verificador falla o no devuelve JSON, se da por cumplido (la revisión nunca bloquea la respuesta).\nconst v = $input.first().json;\nlet r = { cumple: true, faltantes: [], instruccion: '' };\ntry {\n  const m = String(v.output || '').replace(/```(json)?/g, '').match(/\\{[\\s\\S]*\\}/);\n  if (m) r = { ...r, ...JSON.parse(m[0]) };\n} catch (e) {}\nconst faltantes = (Array.isArray(r.faltantes) ? r.faltantes : []).map(String).filter(f => f.trim()).slice(0, 6);\nconst cumple = r.cumple !== false || !faltantes.length;\n\nconst pp = $('Preparar pedido').first().json;\nconst previa = String($('Respuesta final').first().json.output || '').replace(/\\n+---\\n_Agentes:[\\s\\S]*$/, '');\n// Corrige el agente que hizo la parte principal (el primero que respondió bien)\nconst esp = $('Ejecutar agentes en paralelo').all().map(i => i.json).filter(e => e.ok);\nconst agente = (esp[0] && esp[0].agent) || 'general';\nreturn [{ json: {\n  cumple, faltantes, instruccion: String(r.instruccion || ''), verificador: v.model || null,\n  agent: agente, complejidad: 'compleja', fase: 'correccion', session_id: pp.session_id || null,\n  prompt: `Tu respuesta anterior NO cumple todo lo que pidió el usuario.\nFalta:\n${faltantes.map(f => `- ${f}`).join('\\n')}\n${r.instruccion ? `Cómo completarlo: ${r.instruccion}\\n` : ''}\nRespuesta anterior:\n${previa}\n\nDevolvé la respuesta COMPLETA y corregida (no solo lo que falta). Si faltan archivos, gráficos, diagramas o capturas,\ngeneralos con las herramientas y copiá los links nuevos tal cual.`,\n  contexto: `Pedido original del usuario: ${pp.mensaje_original}`,\n} }];\n"
+      },
+      "id": "db404864-25a0-4942-acc4-adc0c3d24706",
+      "name": "Evaluar verificación",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2860,
+        260
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "f906e79f-e4e5-4e67-9196-62838832238d",
+              "leftValue": "={{ $json.cumple }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "cafb2e84-52f8-44ea-a245-04bbe0e56348",
+      "name": "¿Cumple todo?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        3080,
+        260
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.N8N_AGENTE_URL }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-API-Key",
+              "value": "={{ $env.N8N_WEBHOOK_TOKEN }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ agent: $json.agent, prompt: $json.prompt, contexto: $json.contexto, complejidad: $json.complejidad, fase: $json.fase, session_id: $json.session_id }) }}",
+        "options": {
+          "timeout": 900000
+        }
+      },
+      "id": "e42fb8e1-1037-4444-971e-49dd9e3c8e6d",
+      "name": "Completar lo que falta",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        3300,
+        400
+      ],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Respuesta final después de la revisión: la corregida si hizo falta completar algo, si no la original\nconst base = $('Respuesta final').first().json;\nconst ev = $('Evaluar verificación').first().json;\nconst pie = (String(base.output).match(/\\n+---\\n_Agentes:[\\s\\S]*$/) || [''])[0];\nlet output = base.output;\nconst verificacion = { cumple: ev.cumple, faltantes: ev.faltantes, corregido: false, modelo: ev.verificador };\nif (!ev.cumple) {\n  const c = $json;  // lo que devolvió el agente al completar\n  if (c.ok && String(c.output || '').trim()) {\n    output = String(c.output).trim() + (pie ? pie.replace(/_\\s*$/, ` · revisión → completó ${c.agent} con ${c.model}_`) : '');\n    verificacion.corregido = true;\n  } else {\n    output = `${base.output}\\n\\n> ⚠️ La revisión indica que podría faltar: ${ev.faltantes.join('; ')}`;\n  }\n}\nreturn [{ json: { output, titulo: base.titulo, verificacion } }];\n"
+      },
+      "id": "e09a0261-8fd5-4420-83b2-766ae65d3a54",
+      "name": "Respuesta revisada",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3520,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.DOC_SERVICE_URL }}/documento",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-API-Key",
+              "value": "={{ $env.DOC_SERVICE_API_KEY }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ titulo: $json.titulo, contenido_md: $json.output, formatos: 'html', nombre: 'respuesta' }) }}",
+        "options": {
+          "timeout": 60000
+        }
+      },
+      "id": "c894343e-13b0-49f5-a6bf-d0c027c089c5",
+      "name": "Publicar respuesta HTML",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        3740,
+        0
+      ],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Respuesta JSON para la web\nconst base = $('Respuesta revisada').first().json;\nconst esp = $('Ejecutar agentes en paralelo').all().map(i => i.json);\nreturn [{ json: {\n  ok: true,\n  respuesta: base.output,\n  titulo: base.titulo,\n  html_url: $json.html_url || null,\n  verificacion: base.verificacion || null,\n  agentes: esp.map(e => ({ agente: e.agent || '?', modelo: e.model || null, proveedor: e.proveedor || null, ok: !!e.ok })),\n} }];"
+      },
+      "id": "798c2234-0a7b-4a32-8cf1-eb5ab63b79b1",
+      "name": "Respuesta para la web",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3960,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## Orquestador (webhook)\nCopia del orquestador multi-agente para la web local.\n\n`POST /webhook/orquestador`\n```json\n{\"mensaje\": \"...\", \"historial\": [{\"rol\": \"usuario|asistente\", \"texto\": \"...\"}],\n \"adjunto\": {\"base64\": \"...\", \"nombre\": \"x.pdf\", \"mime\": \"application/pdf\"}}\n```\nDevuelve `{ok, respuesta, titulo, html_url, agentes}`.",
+        "width": 560,
+        "height": 300
+      },
+      "id": "62b2e177-ae91-4cda-a913-d4cb63489f2e",
+      "name": "Nota",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        0,
+        -340
+      ]
+    }
+  ],
+  "connections": {
+    "Webhook (web)": {
+      "main": [
+        [
+          {
+            "node": "Preparar pedido",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Preparar pedido": {
+      "main": [
+        [
+          {
+            "node": "¿Adjuntó archivo?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "¿Adjuntó archivo?": {
+      "main": [
+        [
+          {
+            "node": "Leer adjunto",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Orquestador: planificar",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Leer adjunto": {
+      "main": [
+        [
+          {
+            "node": "Agregar texto del adjunto",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Agregar texto del adjunto": {
+      "main": [
+        [
+          {
+            "node": "Orquestador: planificar",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Orquestador: planificar": {
+      "main": [
+        [
+          {
+            "node": "Repartir subtareas",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Repartir subtareas": {
+      "main": [
+        [
+          {
+            "node": "Ejecutar agentes en paralelo",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ejecutar agentes en paralelo": {
+      "main": [
+        [
+          {
+            "node": "Preparar síntesis",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Preparar síntesis": {
+      "main": [
+        [
+          {
+            "node": "¿Hace falta síntesis?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "¿Hace falta síntesis?": {
+      "main": [
+        [
+          {
+            "node": "Orquestador: sintetizar",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Respuesta final",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Orquestador: sintetizar": {
+      "main": [
+        [
+          {
+            "node": "Respuesta final",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Respuesta final": {
+      "main": [
+        [
+          {
+            "node": "Preparar verificación",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Preparar verificación": {
+      "main": [
+        [
+          {
+            "node": "Orquestador: verificar",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Orquestador: verificar": {
+      "main": [
+        [
+          {
+            "node": "Evaluar verificación",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Evaluar verificación": {
+      "main": [
+        [
+          {
+            "node": "¿Cumple todo?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "¿Cumple todo?": {
+      "main": [
+        [
+          {
+            "node": "Respuesta revisada",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Completar lo que falta",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Completar lo que falta": {
+      "main": [
+        [
+          {
+            "node": "Respuesta revisada",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Respuesta revisada": {
+      "main": [
+        [
+          {
+            "node": "Publicar respuesta HTML",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Publicar respuesta HTML": {
+      "main": [
+        [
+          {
+            "node": "Respuesta para la web",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

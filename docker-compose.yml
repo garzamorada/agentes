@@ -1,0 +1,115 @@
+# Agentes: n8n (orquestador + agentes), herramientas MCP, generador de documentos y web local.
+# Configuración y claves: .env (plantilla: .env.default)
+# Levantar todo:   docker compose up -d --build      (desde esta carpeta)
+# Ollama corre aparte (en Windows): ver OLLAMA_URL
+name: agentes
+
+services:
+  n8n:
+    image: docker.n8n.io/n8nio/n8n:latest
+    container_name: n8n-container
+    restart: unless-stopped
+    ports:
+      - "${BIND_IP:-127.0.0.1}:${N8N_PORT:-5678}:5678"
+    volumes:
+      - ./n8n/n8n_data:/home/node/.n8n
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    environment:
+      - N8N_HOST=localhost
+      - N8N_PORT=5678
+      - N8N_PROTOCOL=http
+      - NODE_ENV=production
+      - WEBHOOK_URL=http://localhost:${N8N_PORT:-5678}/
+      - N8N_ENCRYPTION_KEY=${N8N_ENCRYPTION_KEY:?Falta N8N_ENCRYPTION_KEY en .env}
+      # Zona horaria (afecta Schedule Trigger y fechas)
+      - GENERIC_TIMEZONE=${TZ:-America/Argentina/Buenos_Aires}
+      - TZ=${TZ:-America/Argentina/Buenos_Aires}
+      # Seguridad / mantenimiento
+      - N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS=true
+      - EXECUTIONS_DATA_PRUNE=true
+      - EXECUTIONS_DATA_MAX_AGE=336
+      # Permite usar nodos de la comunidad como herramientas del AI Agent
+      - N8N_COMMUNITY_PACKAGES_ALLOW_TOOL_USAGE=true
+      # Task runners (necesario para el nodo Code en Python)
+      - N8N_RUNNERS_ENABLED=true
+      - N8N_RUNNERS_MODE=external
+      - N8N_RUNNERS_BROKER_LISTEN_ADDRESS=0.0.0.0
+      - N8N_RUNNERS_AUTH_TOKEN=${N8N_RUNNERS_AUTH_TOKEN:?Falta N8N_RUNNERS_AUTH_TOKEN en .env}
+      - N8N_NATIVE_PYTHON_RUNNER=true
+      # Los workflows leen claves y URLs con $env (así no quedan escritas en los workflows)
+      - N8N_BLOCK_ENV_ACCESS_IN_NODE=false
+      - N8N_WEBHOOK_TOKEN=${N8N_WEBHOOK_TOKEN:?Falta N8N_WEBHOOK_TOKEN en .env}
+      - MCP_API_KEY=${MCP_API_KEY:?Falta MCP_API_KEY en .env}
+      - DOC_SERVICE_API_KEY=${DOC_SERVICE_API_KEY:?Falta DOC_SERVICE_API_KEY en .env}
+      - WEB_EVENTOS_TOKEN=${WEB_EVENTOS_TOKEN:?Falta WEB_EVENTOS_TOKEN en .env}
+      - MCP_URL=${MCP_URL:-http://mcp-tools:8092/mcp}
+      - DOC_SERVICE_URL=${DOC_SERVICE_URL:-http://doc-service:8090}
+      - WEB_EVENTOS_URL=${WEB_EVENTOS_URL:-http://orquestador-web:8095/api/eventos}
+      - N8N_AGENTE_URL=http://localhost:5678/webhook/agente-especialista
+
+  n8n-runners:
+    # Debe ser la MISMA versión que la imagen de n8n
+    image: n8nio/runners:latest
+    container_name: n8n-runners
+    restart: unless-stopped
+    depends_on:
+      - n8n
+    environment:
+      - N8N_RUNNERS_TASK_BROKER_URI=http://n8n:5679
+      - N8N_RUNNERS_AUTH_TOKEN=${N8N_RUNNERS_AUTH_TOKEN}
+
+  # Genera HTML, PDF, Word, Excel y MD con gráficos y diagramas; sirve los archivos en /files
+  doc-service:
+    build: ./doc-service
+    image: doc-service:1.6
+    container_name: doc-service
+    restart: unless-stopped
+    ports:
+      - "${BIND_IP:-127.0.0.1}:${DOC_SERVICE_PORT:-8090}:8090"
+    volumes:
+      - ./documentos_generados:/data
+    environment:
+      - PUBLIC_URL=${DOC_PUBLIC_URL:-http://localhost:8090}
+      - DOC_SERVICE_API_KEY=${DOC_SERVICE_API_KEY:?Falta DOC_SERVICE_API_KEY en .env}
+
+  # Servidor MCP con todas las herramientas de los agentes (incluye navegador Chromium)
+  mcp-tools:
+    build: ./mcp-tools
+    image: mcp-tools:1.1
+    container_name: mcp-tools
+    restart: unless-stopped
+    shm_size: 512m
+    ports:
+      - "${BIND_IP:-127.0.0.1}:${MCP_PORT:-8092}:8092"
+    volumes:
+      - ./documentos_generados:/data
+    environment:
+      - MCP_API_KEY=${MCP_API_KEY:?Falta MCP_API_KEY en .env}
+      - PUBLIC_URL=${DOC_PUBLIC_URL:-http://localhost:8090}
+      - DOC_SERVICE=${DOC_SERVICE_URL:-http://doc-service:8090}/documento
+      - DOC_SERVICE_API_KEY=${DOC_SERVICE_API_KEY}
+      - EVENTOS_URL=${WEB_EVENTOS_URL:-http://orquestador-web:8095/api/eventos}
+      - WEB_EVENTOS_TOKEN=${WEB_EVENTOS_TOKEN}
+    depends_on:
+      - doc-service
+
+  # Web local del orquestador (FastAPI + React) con el registro de chats
+  orquestador-web:
+    build: ./orquestador-web
+    image: orquestador-web:1.1
+    container_name: orquestador-web
+    restart: unless-stopped
+    ports:
+      - "${BIND_IP:-127.0.0.1}:${WEB_PORT:-8095}:8095"
+    volumes:
+      - ./orquestador-web/data:/data
+    environment:
+      - WEB_ACCESS_TOKEN=${WEB_ACCESS_TOKEN:?Falta WEB_ACCESS_TOKEN en .env}
+      - WEB_EVENTOS_TOKEN=${WEB_EVENTOS_TOKEN}
+      - N8N_WEBHOOK_TOKEN=${N8N_WEBHOOK_TOKEN}
+      - N8N_WEBHOOK=${N8N_INTERNAL_URL:-http://n8n-container:5678}/webhook/orquestador
+      - N8N_ESTADO=${N8N_INTERNAL_URL:-http://n8n-container:5678}/webhook/estado-modelos
+      - OLLAMA_URL=${OLLAMA_URL:-http://192.168.65.254:11434}
+    depends_on:
+      - n8n
