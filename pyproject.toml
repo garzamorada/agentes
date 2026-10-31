@@ -1,0 +1,11 @@
+# Ruff (linter y formateador de Python) para todo el repositorio.
+# Uso:  ruff check .   |   ruff check . --fix   |   ruff format --check .
+# Las reglas están en mcp-tools/ruff.toml (las usa también la herramienta revisar_codigo de los agentes).
+[tool.ruff]
+extend = "mcp-tools/ruff.toml"
+extend-exclude = ["n8n", "skills", "documentos_generados", "orquestador-web/frontend", "orquestador-web/data"]
+
+[tool.ruff.lint.per-file-ignores]
+"generador/build/*.py" = ["S603", "S607"]
+# Graphviz: se invoca "dot" del PATH del contenedor, con argumentos fijos
+"doc-service/diagramas.py" = ["S603", "S607"]

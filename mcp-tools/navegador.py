@@ -13,8 +13,8 @@ Límites de seguridad:
 """
 import asyncio
 import datetime
-import json
 import ipaddress
+import json
 import os
 import re
 import socket
@@ -496,7 +496,7 @@ async def ejecutar(p: Pedido):
 async def accion(p: Pedido) -> dict:
     try:
         return await asyncio.wait_for(ejecutar(p), timeout=90)
-    except asyncio.TimeoutError:
+    except TimeoutError:
         return {'ok': False, 'resultado': 'La acción tardó demasiado (más de 90 s). Probá con otra página o acción.'}
     except PWError as e:
         return {'ok': False, 'resultado': f'Error del navegador: {str(e).splitlines()[0][:300]}'}

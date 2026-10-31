@@ -110,15 +110,14 @@ async def leer_url(url: str) -> dict:
 
     try:
         async with httpx.AsyncClient(timeout=40, follow_redirects=True, headers={'User-Agent': UA},
-                                     event_hooks={'request': [revisar]}) as c:
-            async with c.stream('GET', url) as r:
-                r.raise_for_status()
-                datos = b''
-                async for trozo in r.aiter_bytes():
-                    datos += trozo
-                    if len(datos) > MAX_BYTES:
-                        return {'archivo': url, 'tipo': '?', 'truncado': True, 'texto': 'Error: el archivo supera 25 MB.'}
-                mime = r.headers.get('content-type', '')
+                                     event_hooks={'request': [revisar]}) as c, c.stream('GET', url) as r:
+            r.raise_for_status()
+            datos = b''
+            async for trozo in r.aiter_bytes():
+                datos += trozo
+                if len(datos) > MAX_BYTES:
+                    return {'archivo': url, 'tipo': '?', 'truncado': True, 'texto': 'Error: el archivo supera 25 MB.'}
+            mime = r.headers.get('content-type', '')
     except httpx.HTTPError as e:
         return {'archivo': url, 'tipo': '?', 'truncado': False, 'texto': f'Error al descargar {url}: {e}'}
     nombre = urllib.parse.unquote(urllib.parse.urlparse(url).path.rsplit('/', 1)[-1]) or url

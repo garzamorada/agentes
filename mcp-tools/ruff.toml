@@ -1,0 +1,32 @@
+# Reglas de Ruff (linter y formateador de Python) del proyecto.
+# Las usa la herramienta revisar_codigo del servidor MCP y el pyproject.toml del repositorio las hereda (extend).
+target-version = "py312"
+line-length = 130
+
+[lint]
+select = [
+    "E", "W",   # pycodestyle: errores y advertencias de estilo
+    "F",        # pyflakes: imports sin usar, nombres indefinidos, variables sin usar
+    "I",        # isort: orden de los imports
+    "B",        # flake8-bugbear: bugs probables y diseños riesgosos
+    "UP",       # pyupgrade: sintaxis moderna de Python 3.12
+    "S",        # flake8-bandit: problemas de seguridad
+    "SIM",      # flake8-simplify: código que se puede simplificar
+    "C4",       # flake8-comprehensions
+]
+ignore = [
+    "E501",     # largo de línea: lo maneja el formateador
+    "S101",     # assert: se usa en scripts y tests para validar
+    "S104",     # escuchar en 0.0.0.0: es lo esperado dentro de los contenedores
+    "SIM108",   # operador ternario obligatorio: a veces el if/else se lee mejor
+    "E741",     # nombres como l (línea) en bucles cortos
+    "E731",     # lambdas cortas con nombre (helpers de una línea)
+    "SIM105",   # try/except/pass explícito en lugar de contextlib.suppress
+]
+
+[lint.per-file-ignores]
+"test_*.py" = ["S101"]
+"*_test.py" = ["S101"]
+
+[format]
+quote-style = "single"

@@ -92,6 +92,7 @@ Reglas de uso en [mcp-tools/reglas.md](mcp-tools/reglas.md), para que el agente 
 | `crear_imagen`, `editar_imagen` | Portadas y banners con texto; redimensionar, recortar, collage, etc. |
 | `generar_imagen` | Imágenes con IA (FLUX.2 klein en la GPU) |
 | `leer_skill` | Instrucciones completas de una skill del proyecto (y sus archivos de referencia) |
+| `revisar_codigo` | Revisa código Python con **Ruff**: errores, bugs probables, seguridad (reglas de Bandit) y estilo; con `arreglar`/`formatear` devuelve el código corregido |
 
 Cada tipo de agente ve solo las herramientas que necesita (perfiles `planificador`, `basicas`, `adjuntos`, `todas`).
 
@@ -464,3 +465,29 @@ Dismount-VHD -Path "$env:LOCALAPPDATA\Docker\wsl\disk\docker_data.vhdx"
 ```
 
 **Si n8n da "Task request timed out"**: `docker compose restart n8n-runners`.
+
+### Calidad del código Python (Ruff)
+
+El repositorio usa [Ruff](https://docs.astral.sh/ruff/) como linter y formateador. Las reglas están en
+[mcp-tools/ruff.toml](mcp-tools/ruff.toml) (errores, imports, bugs probables, sintaxis de Python 3.12, seguridad de
+Bandit, simplificaciones) y [pyproject.toml](pyproject.toml) las hereda para todo el repo.
+
+```bash
+pip install ruff
+```
+
+```bash
+ruff check .
+```
+
+```bash
+ruff check . --fix
+```
+
+```bash
+ruff format --check .
+```
+
+Los agentes usan las mismas reglas con la herramienta `revisar_codigo` del MCP: Nick Fury y Coulson revisan el código
+Python que entregan y Stiuso la usa como apoyo en revisiones de seguridad. El código nunca se ejecuta: Ruff solo lo lee.
+El ejecutor de `orquestador-codigo` corre `ruff check` en tu proyecto si lo tenés instalado.

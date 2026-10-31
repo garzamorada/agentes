@@ -28,14 +28,20 @@ from pathlib import Path
 import httpx
 import torch
 from accelerate import init_empty_weights
-from diffusers import AutoencoderKL, EulerDiscreteScheduler, StableDiffusionXLPipeline, UNet2DConditionModel
+from diffusers import (
+    AutoencoderKL,
+    EulerDiscreteScheduler,
+    Flux2KleinPipeline,
+    Flux2Transformer2DModel,
+    StableDiffusionXLPipeline,
+    UNet2DConditionModel,
+)
 from diffusers import BitsAndBytesConfig as DiffusersBnb
-from diffusers import Flux2KleinPipeline, Flux2Transformer2DModel
-from transformers import BitsAndBytesConfig, Qwen3ForCausalLM
 from fastapi import Depends, FastAPI, Header, HTTPException
 from huggingface_hub import hf_hub_download
 from pydantic import BaseModel, Field
 from safetensors.torch import load_file
+from transformers import BitsAndBytesConfig, Qwen3ForCausalLM
 
 API_KEY = os.environ.get('IMAGEN_IA_API_KEY', '')
 if not API_KEY:
@@ -208,7 +214,7 @@ async def generar(p: Pedido):
             imagenes = await asyncio.to_thread(correr)
         except torch.cuda.OutOfMemoryError:
             torch.cuda.empty_cache()
-            raise HTTPException(507, 'Sin memoria de GPU: probá con menos imágenes o un tamaño menor.')
+            raise HTTPException(507, 'Sin memoria de GPU: probá con menos imágenes o un tamaño menor.') from None
         estado['usado'] = time.time()
 
     carpeta = DATA / f'ia-{datetime.datetime.now():%Y%m%d-%H%M%S}-{uuid.uuid4().hex[:6]}'

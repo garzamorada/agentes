@@ -2,14 +2,18 @@
 
 IDs de workflows y credenciales en ids.json.
 """
-import json, re, uuid, pathlib
+import copy
+import json
+import pathlib
+import re
+import uuid
 
 B = pathlib.Path(__file__).parent
 OUT = B.parent / 'workflows'
 OUT.mkdir(exist_ok=True)
-skills = json.load(open(B / 'skills.json', encoding='utf-8'))
+skills = json.loads((B / 'skills.json').read_text(encoding='utf-8'))
 js = lambda n: (B / n).read_text(encoding='utf-8')
-IDS = json.load(open(B / 'ids.json', encoding='utf-8'))
+IDS = json.loads((B / 'ids.json').read_text(encoding='utf-8'))
 # Reglas de uso de herramientas: las mismas que publica el servidor MCP (mcp-tools/reglas.md)
 MCP_DIR = B.parent.parent / 'mcp-tools'   # agentes/mcp-tools
 REGLAS = (MCP_DIR / 'reglas.md').read_text(encoding='utf-8').strip()
@@ -22,7 +26,7 @@ AGENTE_URL = '={{ $env.N8N_AGENTE_URL }}'
 
 def cabecera(variable):
     """Header X-API-Key con el valor de una variable de entorno de n8n."""
-    return {'sendHeaders': True, 'headerParameters': {'parameters': [{'name': 'X-API-Key', 'value': '={{ $env.%s }}' % variable}]}}
+    return {'sendHeaders': True, 'headerParameters': {'parameters': [{'name': 'X-API-Key', 'value': f'={{{{ $env.{variable} }}}}'}]}}
 WEBHOOK_PATH = 'agente-especialista'
 
 # ---------- Agentes: uno por archivo en generador/agentes/<id>.json ----------
@@ -247,7 +251,7 @@ def cond(left, value, op='equals', typ='string'):
 
 
 def switch(name, field, values, pos, fallback=None):
-    params = {'rules': {'values': [{'conditions': cond('={{ $json.%s }}' % field, v), 'renameOutput': True,
+    params = {'rules': {'values': [{'conditions': cond(f'={{{{ $json.{field} }}}}', v), 'renameOutput': True,
                                     'outputKey': v} for v in values]},
               'options': {}}
     if fallback:
@@ -301,8 +305,8 @@ def tool_wf(name, desc, wid, inputs, pos, fijos=None):
     fijos: {campo: valor o expresión} que no elige el modelo."""
     def from_ai(k, d):
         if isinstance(d, tuple):
-            return "={{ $fromAI('%s', `%s`, 'string', '%s') }}" % (k, d[0], d[1])
-        return "={{ $fromAI('%s', `%s`, 'string') }}" % (k, d)
+            return f"={{{{ $fromAI('{k}', `{d[0]}`, 'string', '{d[1]}') }}}}"
+        return f"={{{{ $fromAI('{k}', `{d}`, 'string') }}}}"
     return node(name, '@n8n/n8n-nodes-langchain.toolWorkflow', 2.2, pos,
                 {'name': name, 'description': desc, 'source': 'database',
                  'workflowId': {'__rl': True, 'value': wid, 'mode': 'id'},
@@ -349,7 +353,7 @@ sub_nodes = [
     selector, nvidia_llm, ollama_llm, *tools,
     # Respuesta vacía (pasa con modelos locales chicos): se trata como falla y se prueba el siguiente modelo
     node('¿Respondió algo?', 'n8n-nodes-base.if', 2.2, [1240, -60],
-         {'conditions': cond("={{ String($json.output ?? '').replace(/<\/?think>/g, '').trim() }}", '', 'notEmpty'), 'options': {}}),
+         {'conditions': cond(r"={{ String($json.output ?? '').replace(/<\/?think>/g, '').trim() }}", '', 'notEmpty'), 'options': {}}),
     code('Registrar éxito', js('registrar_exito.js'), [1460, -60]),
     code('Registrar fallo (pasar al siguiente)', js('registrar_fallo.js'), [1360, 160]),
     node('Esperar cupo', 'n8n-nodes-base.wait', 1.1, [660, 460],
@@ -563,7 +567,7 @@ return [{ json: {
   agentes: esp.map(e => ({ agente: e.agent || '?', nombre: e.nombre || null, modelo: e.model || null, proveedor: e.proveedor || null, ok: !!e.ok })),
 } }];'''
 
-import copy
+
 web_nodes = [copy.deepcopy(n) for n in orq_nodes if n['name'] not in ('Chat', 'Mensaje del chat', 'Nota')]
 for n in web_nodes:
     n['id'] = nid()

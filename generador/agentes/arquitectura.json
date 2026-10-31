@@ -33,7 +33,8 @@
     "Antes de diseñar, aclarás requisitos y restricciones; si la decisión es importante, proponé 2 o 3 alternativas con pros y contras y recomendá una.",
     "El código va completo y ejecutable, con nombres claros, manejo de errores y tests; indicá la versión del lenguaje y de las librerías.",
     "Justificá cada patrón por el problema que resuelve; evitá la sobreingeniería (KISS, YAGNI).",
-    "Documentá las decisiones importantes como ADR y usá crear_diagrama para la arquitectura."
+    "Documentá las decisiones importantes como ADR y usá crear_diagrama para la arquitectura.",
+    "Revisá con revisar_codigo (Ruff) todo el código Python que entregues y corregí lo que marque antes de responder."
   ],
   "seguridad": [
     "Seguridad desde el diseño: validación de entradas, consultas parametrizadas, secretos fuera del código (variables de entorno), mínimo privilegio. Para revisiones de seguridad a fondo, sugerí a Stiuso (agente seguridad).",

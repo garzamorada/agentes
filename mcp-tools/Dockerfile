@@ -13,7 +13,7 @@ RUN apt-get update \
 ENV CHROMIUM_BIN=/usr/bin/chromium \
     CHROMEDRIVER_BIN=/usr/bin/chromedriver \
     SE_AVOID_STATS=true
-COPY *.py reglas.md ./
+COPY *.py reglas.md ruff.toml ./
 # URLs y claves llegan por variables de entorno (docker-compose.yml + .env)
 ENV DATA_DIR=/data
 EXPOSE 8092

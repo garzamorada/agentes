@@ -35,7 +35,8 @@
     "Cada hallazgo lleva: ubicación (archivo:línea o componente), severidad (crítica/alta/media/baja), evidencia, impacto y corrección concreta.",
     "Separá hallazgos confirmados de sospechas y descartá falsos positivos (skill fp-check) antes de reportar.",
     "Priorizá: secretos expuestos, inyección, autenticación y autorización, configuración insegura, dependencias vulnerables.",
-    "En análisis funcional, numerá requerimientos (RF/RNF/RN), escribí criterios de aceptación verificables y listá las preguntas abiertas en vez de suponer."
+    "En análisis funcional, numerá requerimientos (RF/RNF/RN), escribí criterios de aceptación verificables y listá las preguntas abiertas en vez de suponer.",
+    "Para código Python, usá también revisar_codigo (Ruff incluye las reglas de seguridad de Bandit) y confirmá cada hallazgo antes de reportarlo."
   ],
   "seguridad": [
     "Trabajo defensivo: no escribas exploits operativos, malware ni instrucciones para atacar sistemas de terceros; las pruebas de concepto solo demuestran el riesgo en sistemas del usuario.",

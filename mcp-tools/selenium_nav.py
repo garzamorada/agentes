@@ -11,8 +11,8 @@ import datetime
 import os
 import threading
 import time
-import uuid
 import urllib.parse
+import uuid
 
 from selenium import webdriver
 from selenium.common.exceptions import NoSuchElementException, TimeoutException, WebDriverException
@@ -22,8 +22,25 @@ from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.support.ui import Select
 
 import extraccion
-from navegador import (DATA, IFRAMES_CAPTCHA, JS_ELEMENTOS, JS_INFO_CAMPO, JS_TEXTO, MAX_ELEMENTOS, MSG_SENSIBLE, PUBLIC, SI,
-                       UA, ACCION_DESCONOCIDA, Pedido, _host_privado, elegir_opcion, es_sensible, formatear, leer_campos)
+from navegador import (
+    ACCION_DESCONOCIDA,
+    DATA,
+    IFRAMES_CAPTCHA,
+    JS_ELEMENTOS,
+    JS_INFO_CAMPO,
+    JS_TEXTO,
+    MAX_ELEMENTOS,
+    MSG_SENSIBLE,
+    PUBLIC,
+    SI,
+    UA,
+    Pedido,
+    _host_privado,
+    elegir_opcion,
+    es_sensible,
+    formatear,
+    leer_campos,
+)
 
 CHROMIUM = os.environ.get('CHROMIUM_BIN', '/usr/bin/chromium')
 CHROMEDRIVER = os.environ.get('CHROMEDRIVER_BIN', '/usr/bin/chromedriver')
@@ -341,7 +358,7 @@ def _ejecutar(p: Pedido) -> dict:
 async def accion(p: Pedido) -> dict:
     try:
         return await asyncio.wait_for(asyncio.to_thread(_ejecutar, p), timeout=90)
-    except asyncio.TimeoutError:
+    except TimeoutError:
         return {'ok': False, 'resultado': 'La acción con Selenium tardó demasiado (más de 90 s). Probá con otra página o acción.'}
     except WebDriverException as e:
         return {'ok': False, 'resultado': f'Error de Selenium: {str(e).splitlines()[0][:300]}'}

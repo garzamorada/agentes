@@ -21,11 +21,13 @@ import markdown as mdlib
 import matplotlib
 
 matplotlib.use('Agg')
+import secrets  # noqa: E402
+
+import diagramas  # noqa: E402
 import matplotlib.pyplot as plt  # noqa: E402
 from docx import Document  # noqa: E402
 from docx.shared import Inches, Pt, RGBColor  # noqa: E402
 from fastapi import Depends, FastAPI, Header, HTTPException  # noqa: E402
-import secrets  # noqa: E402
 from fastapi.responses import FileResponse, RedirectResponse  # noqa: E402
 from openpyxl import Workbook  # noqa: E402
 from openpyxl.chart import AreaChart, BarChart, DoughnutChart, LineChart, PieChart, Reference  # noqa: E402
@@ -33,8 +35,6 @@ from openpyxl.drawing.image import Image as XLImage  # noqa: E402
 from openpyxl.styles import Font, PatternFill  # noqa: E402
 from openpyxl.utils import get_column_letter  # noqa: E402
 from weasyprint import HTML as WeasyHTML  # noqa: E402
-
-import diagramas  # noqa: E402
 
 DATA = Path(os.environ.get('DATA_DIR', '/data'))
 PUBLIC = os.environ.get('PUBLIC_URL', 'http://localhost:8090').rstrip('/')
@@ -164,7 +164,7 @@ def _graficos(valor):
         try:
             gs = json.loads(_reparar_json(valor))
         except json.JSONDecodeError as e:
-            raise HTTPException(400, f'graficos_json no es JSON válido: {e}')
+            raise HTTPException(400, f'graficos_json no es JSON válido: {e}') from e
     if isinstance(gs, dict):
         gs = [gs]
     salida = []
@@ -175,7 +175,7 @@ def _graficos(valor):
             try:
                 salida.append(diagramas.normalizar(g))
             except ValueError as e:
-                raise HTTPException(400, str(e))
+                raise HTTPException(400, str(e)) from e
             continue
         tipo = str(g.get('tipo', 'bar')).lower().strip()
         tipo = TIPOS.get(tipo, tipo)
@@ -282,7 +282,7 @@ def _figura(g):
                 barras = ax.barh([p + (i - (n - 1) / 2) * ancho for p in x], vals, ancho, label=s['nombre'], color=color)
             elif tipo == 'stacked':
                 barras = ax.bar(x, vals, ancho, bottom=base, label=s['nombre'], color=color)
-                base = [b + v for b, v in zip(base, vals)]
+                base = [b + v for b, v in zip(base, vals, strict=False)]
             elif tipo == 'area':
                 ax.fill_between(x, vals, alpha=0.35, color=color)
                 ax.plot(x, vals, linewidth=2, label=s['nombre'], color=color)
@@ -291,7 +291,7 @@ def _figura(g):
                 ax.plot(x, vals, marker='o', linewidth=2, label=s['nombre'], color=color)
                 barras = None
                 if g.get('mostrar_valores'):
-                    for xi, v in zip(x, vals):
+                    for xi, v in zip(x, vals, strict=False):
                         ax.annotate(fmt(v), (xi, v), textcoords='offset points', xytext=(0, 6), ha='center', fontsize=8)
             if barras is not None and g.get('mostrar_valores'):
                 ax.bar_label(barras, labels=[fmt(v) for v in vals], fontsize=8, padding=2,
@@ -649,7 +649,7 @@ def documento(pedido: dict):
             continue
         f = json.loads(fuente.read_text(encoding='utf-8'))
         desplazamiento = len(graficos_html)
-        cuerpo = PLACEHOLDER.sub(lambda m: f'[[grafico:{int(m.group(1)) + desplazamiento}]]', f['md'])
+        cuerpo = PLACEHOLDER.sub(lambda m, d=desplazamiento: f'[[grafico:{int(m.group(1)) + d}]]', f['md'])
         cuerpo = re.sub(r'^(#{1,5})\s', r'#\1 ', cuerpo, flags=re.M)          # bajar un nivel los títulos
         usados = {int(n) for n in PLACEHOLDER.findall(f['md'])}
         sueltos = ''.join(f'\n\n[[grafico:{n + desplazamiento}]]' for n in range(1, len(f['graficos']) + 1) if n not in usados)

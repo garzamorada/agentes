@@ -157,7 +157,7 @@ def _mermaid(codigo):
     for l in lineas[1:]:
         if re.match(r'(subgraph|end|classDef|class|style|linkStyle|click|direction)\b', l):
             continue
-        pos, previo, etiqueta = 0, None, ''
+        pos, previo, etiqueta, estilo = 0, None, '', ''
         while pos < len(l):
             m = NODO_MM.match(l, pos)
             if not m or not m.group(1):
@@ -267,7 +267,7 @@ def completar(md, inicio):
                      [{'id': 'fin', 'texto': 'Fin', 'forma': 'circulo', 'grupo': 2}])
             orden = [n['id'] for n in nodos]
             diagramas.append({'tipo': 'diagrama', 'titulo': '', 'direccion': 'TB' if len(nombres) > 4 else 'LR',
-                              'nodos': nodos, 'flechas': [{'de': a, 'a': b} for a, b in zip(orden, orden[1:])]})
+                              'nodos': nodos, 'flechas': [{'de': a, 'a': b} for a, b in zip(orden, orden[1:], strict=False)]})
             inserciones[i] = inicio + len(diagramas) - 1
 
     if not diagramas:

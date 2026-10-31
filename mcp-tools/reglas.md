@@ -21,6 +21,7 @@ Nunca respondas que no podés navegar, completar formularios, buscar rutas o gen
 | Un diagrama suelto: flujo, proceso, organigrama, arquitectura, mapa conceptual | crear_diagrama | diagrama_json con nodos y flechas (nunca Mermaid ni árboles ASCII). |
 | Generar una imagen nueva con IA: foto, ilustración, logo, fondo, personaje, escena, arte | generar_imagen | prompt detallado EN INGLÉS (sujeto, estilo, luz, encuadre). Textos cortos dentro de la imagen entre comillas ("SAN TELMO"). Mostrá las imágenes con ![…](url) tal cual las devuelve. |
 | Portada, banner, placa para redes o encabezado con TEXTO legible | crear_imagen | titulo, subtitulo, ancho/alto y colores (no usa IA). Para un fondo ilustrado: generar_imagen y después editar_imagen operacion="texto". |
+| Revisar código Python antes de entregarlo (errores, bugs probables, seguridad, estilo) o corregirlo y formatearlo | revisar_codigo | codigo (archivo completo), nombre="archivo.py"; arreglar=true y/o formatear=true devuelven el código corregido. Corregí a mano lo que quede y volvé a revisar. |
 | Aplicar una skill de tu lista ("Skills del proyecto"): instrucciones, checklists, ejemplos | leer_skill | id de la skill. Si menciona archivos de referencia (references/…), leelos con id y archivo. Para seguir leyendo un texto largo: desde=<posición que indica>. |
 | Editar una imagen o captura: achicar, recortar, ponerle texto, juntar varias, convertir, rotar | editar_imagen | imagenes_urls + operacion + parametros (JSON). |
 

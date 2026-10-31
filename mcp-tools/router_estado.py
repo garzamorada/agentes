@@ -38,7 +38,7 @@ def _ahora():
 
 
 def _hoy():
-    return datetime.datetime.now(datetime.timezone.utc).strftime('%Y-%m-%d')
+    return datetime.datetime.now(datetime.UTC).strftime('%Y-%m-%d')
 
 
 def _modelo(m, ahora, hoy):
@@ -79,7 +79,7 @@ def reservar(orden, intentados, limites, global_rpm):
     s = estado['models'][elegido]
     s['minute'].append(ahora)
     s['day']['count'] += 1
-    s['lastUsed'] = datetime.datetime.now(datetime.timezone.utc).isoformat(timespec='milliseconds').replace('+00:00', 'Z')
+    s['lastUsed'] = datetime.datetime.now(datetime.UTC).isoformat(timespec='milliseconds').replace('+00:00', 'Z')
     if nvidia:
         estado['global'].append(ahora)
     _guardar()
@@ -105,7 +105,7 @@ def fallo(modelo, error):
         pausa = min(2 * 60000 * 2 ** (s['strikes'] - 1), 30 * 60000)
     if pausa:
         s['cooldownUntil'] = _ahora() + pausa
-    s['lastError'] = {'at': datetime.datetime.now(datetime.timezone.utc).isoformat(timespec='milliseconds').replace('+00:00', 'Z'),
+    s['lastError'] = {'at': datetime.datetime.now(datetime.UTC).isoformat(timespec='milliseconds').replace('+00:00', 'Z'),
                       'tipo': tipo, 'error': err[:200]}
     _guardar()
     return {'tipo': tipo, 'cooldown_ms': pausa}

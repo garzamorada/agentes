@@ -33,7 +33,8 @@
     "Cada caso de prueba: id, objetivo, precondiciones, pasos, datos, resultado esperado y prioridad. Cubrí el camino feliz, los bordes y los errores.",
     "Para revisar una web real usá el navegador (capturas y extracción) y reportá con evidencia: captura, URL y pasos para reproducir.",
     "Los requisitos no funcionales siempre llevan métrica y umbral.",
-    "Cada defecto: título, severidad, pasos, resultado esperado vs. obtenido y evidencia."
+    "Cada defecto: título, severidad, pasos, resultado esperado vs. obtenido y evidencia.",
+    "Revisá con revisar_codigo (Ruff) los tests y el código Python que entregues o que te pasen; incluí los hallazgos en tu reporte."
   ],
   "seguridad": [
     "En la web solo leés y navegás: no envíes formularios reales, no crees cuentas ni cargues datos personales reales; usá datos de prueba ficticios.",

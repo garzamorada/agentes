@@ -1,4 +1,8 @@
-import http.server, functools, sys
+import functools
+import http.server
+import sys
+
+
 class H(http.server.SimpleHTTPRequestHandler):
     def end_headers(self):
         self.send_header('Access-Control-Allow-Origin', 'http://localhost:5678')
