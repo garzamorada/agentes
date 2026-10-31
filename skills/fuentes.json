@@ -1,0 +1,1123 @@
+[
+ {
+  "id": "differential-review",
+  "fuente": "https://github.com/trailofbits/skills",
+  "autor": "Trail of Bits",
+  "licencia": "CC-BY-SA-4.0",
+  "commit": "2be6433b39e009cd2b6fd3be1895f6b1faa5af9a",
+  "ruta_original": "plugins/differential-review/skills/differential-review",
+  "archivos": [
+   "adversarial.md",
+   "methodology.md",
+   "patterns.md",
+   "reporting.md",
+   "SKILL.md",
+   "LICENSE.txt"
+  ],
+  "excluidos_no_texto": [
+   "agents/openai.yaml",
+   "assets/trail-of-bits-mark.svg"
+  ],
+  "sha256_skill": "dfdfebb578c6faae1086ec3183fd737e02a225d413185eb705b2e31fd5db9efe",
+  "descripcion_original": "Performs security-focused differential review of code changes. Adapts analysis depth to codebase size, uses git blame for context, calculates blast radius by counting callers, checks test coverage of modified code, and generates a markdown report. Use when reviewing a PR, commit, or diff for securit",
+  "auditoria": "ok"
+ },
+ {
+  "id": "sharp-edges",
+  "fuente": "https://github.com/trailofbits/skills",
+  "autor": "Trail of Bits",
+  "licencia": "CC-BY-SA-4.0",
+  "commit": "2be6433b39e009cd2b6fd3be1895f6b1faa5af9a",
+  "ruta_original": "plugins/sharp-edges/skills/sharp-edges",
+  "archivos": [
+   "references/auth-patterns.md",
+   "references/case-studies.md",
+   "references/config-patterns.md",
+   "references/crypto-apis.md",
+   "references/lang-c.md",
+   "references/lang-csharp.md",
+   "references/lang-go.md",
+   "references/lang-java.md",
+   "references/lang-javascript.md",
+   "references/lang-kotlin.md",
+   "references/lang-php.md",
+   "references/lang-python.md",
+   "references/lang-ruby.md",
+   "references/lang-rust.md",
+   "references/lang-swift.md",
+   "references/language-specific.md",
+   "SKILL.md",
+   "LICENSE.txt"
+  ],
+  "excluidos_no_texto": [
+   "agents/openai.yaml",
+   "assets/trail-of-bits-mark.svg"
+  ],
+  "sha256_skill": "3e2d2c7137a4c2920b8c6ba966599cb023bd9cd2897f2444fe1027ef49f68fa4",
+  "descripcion_original": "Identifies error-prone APIs, dangerous configurations, and footgun designs that enable security mistakes. Use when reviewing API designs, configuration schemas, cryptographic library ergonomics, or evaluating whether code follows 'secure by default' and 'pit of success' principles. Triggers: footgun",
+  "auditoria": "ok con observaciones: Contiene ejemplos didácticos de comandos peligrosos (rm -rf /, --no-verify) como casos de ataque; emoji con U+200D."
+ },
+ {
+  "id": "supply-chain-risk-auditor",
+  "fuente": "https://github.com/trailofbits/skills",
+  "autor": "Trail of Bits",
+  "licencia": "CC-BY-SA-4.0",
+  "commit": "2be6433b39e009cd2b6fd3be1895f6b1faa5af9a",
+  "ruta_original": "plugins/supply-chain-risk-auditor/skills/supply-chain-risk-auditor",
+  "archivos": [
+   "SKILL.md",
+   "LICENSE.txt"
+  ],
+  "excluidos_no_texto": [
+   "agents/openai.yaml",
+   "assets/trail-of-bits-mark.svg",
+   "scripts/collect.py",
+   "scripts/model.py",
+   "scripts/pyproject.toml",
+   "scripts/render.py",
+   "scripts/sources.py",
+   "scripts/test_collect.py",
+   "scripts/test_model.py",
+   "scripts/test_render.py",
+   "scripts/test_sources.py",
+   "scripts/uv.lock"
+  ],
+  "sha256_skill": "2616110471497c8e366930dca14864754d1b2972b72231a875eb57722426f578",
+  "descripcion_original": "Audits a project's dependencies for supply-chain risk: version-matched advisories for direct dependencies and the full lockfile tree, abandoned or archived upstreams, npm publisher concentration, and install-time script execution. Use when asked to audit dependencies, assess supply-chain or third-pa",
+  "auditoria": "ok"
+ },
+ {
+  "id": "fp-check",
+  "fuente": "https://github.com/trailofbits/skills",
+  "autor": "Trail of Bits",
+  "licencia": "CC-BY-SA-4.0",
+  "commit": "2be6433b39e009cd2b6fd3be1895f6b1faa5af9a",
+  "ruta_original": "plugins/fp-check/skills/fp-check",
+  "archivos": [
+   "references/bug-class-verification.md",
+   "references/deep-verification.md",
+   "references/evidence-templates.md",
+   "references/false-positive-patterns.md",
+   "references/gate-reviews.md",
+   "references/standard-verification.md",
+   "SKILL.md",
+   "LICENSE.txt"
+  ],
+  "excluidos_no_texto": [
+   "agents/openai.yaml",
+   "assets/trail-of-bits-mark.svg"
+  ],
+  "sha256_skill": "d207c410783445bafc96bf6bc3221f02babbb80bfc7d021ffc9f97c8c06707de",
+  "descripcion_original": "Systematically verifies suspected security bugs to eliminate false positives, producing a TRUE POSITIVE or FALSE POSITIVE verdict with documented evidence for each. Use when asked whether a specific finding is real, exploitable, or a false positive, or to verify or validate a suspected vulnerability",
+  "auditoria": "ok"
+ },
+ {
+  "id": "variant-analysis",
+  "fuente": "https://github.com/trailofbits/skills",
+  "autor": "Trail of Bits",
+  "licencia": "CC-BY-SA-4.0",
+  "commit": "2be6433b39e009cd2b6fd3be1895f6b1faa5af9a",
+  "ruta_original": "plugins/variant-analysis/skills/variant-analysis",
+  "archivos": [
+   "references/reporting.md",
+   "references/root-cause.md",
+   "references/searching.md",
+   "references/triage.md",
+   "resources/variant-report-template.md",
+   "SKILL.md",
+   "LICENSE.txt"
+  ],
+  "excluidos_no_texto": [
+   "agents/openai.yaml",
+   "assets/trail-of-bits-mark.svg",
+   "resources/codeql/cpp.ql",
+   "resources/codeql/go.ql",
+   "resources/codeql/java.ql",
+   "resources/codeql/javascript.ql",
+   "resources/codeql/python.ql",
+   "resources/semgrep/cpp.yaml",
+   "resources/semgrep/go.yaml",
+   "resources/semgrep/java.yaml",
+   "resources/semgrep/javascript.yaml",
+   "resources/semgrep/python.yaml"
+  ],
+  "sha256_skill": "4d7dfdf8ec8f8260e3b52f5742253332bd6adde8a10bb77f5557da510957f89e",
+  "descripcion_original": "Hunts for the other instances of a bug already found — the variants of one root cause across a codebase. Use immediately after a vulnerability, logic bug, or bad pattern turns up in a specific file and the question becomes where else it occurs, including the bare conversational form (\"are there othe",
+  "auditoria": "ok"
+ },
+ {
+  "id": "audit-context-building",
+  "fuente": "https://github.com/trailofbits/skills",
+  "autor": "Trail of Bits",
+  "licencia": "CC-BY-SA-4.0",
+  "commit": "2be6433b39e009cd2b6fd3be1895f6b1faa5af9a",
+  "ruta_original": "plugins/audit-context-building/skills/audit-context-building",
+  "archivos": [
+   "resources/ANALYSIS_FORMAT.md",
+   "resources/DOMAIN_NOTES.md",
+   "resources/FUNCTION_MICRO_ANALYSIS_EXAMPLE.md",
+   "SKILL.md",
+   "LICENSE.txt"
+  ],
+  "excluidos_no_texto": [
+   "agents/openai.yaml",
+   "assets/trail-of-bits-mark.svg"
+  ],
+  "sha256_skill": "a28f78b28601ff6babc007da0579408b6afaec4b5935e5b78436603a3387c972",
+  "descripcion_original": "Understand a codebase before looking for bugs in it - what each function assumes, what it guarantees, and what it depends on elsewhere. Use when starting an audit, threat model, or architecture review on unfamiliar code, and before any vulnerability-hunting pass.",
+  "auditoria": "ok con observaciones: U+200B delante de bloques de código anidados (formato)."
+ },
+ {
+  "id": "spec-to-code-compliance",
+  "fuente": "https://github.com/trailofbits/skills",
+  "autor": "Trail of Bits",
+  "licencia": "CC-BY-SA-4.0",
+  "commit": "2be6433b39e009cd2b6fd3be1895f6b1faa5af9a",
+  "ruta_original": "plugins/spec-to-code-compliance/skills/spec-to-code-compliance",
+  "archivos": [
+   "resources/ANALYSIS_FORMAT.md",
+   "resources/DIVERGENCE_RUBRIC.md",
+   "resources/DOMAIN_NOTES.md",
+   "resources/WORKED_EXAMPLE.md",
+   "SKILL.md",
+   "LICENSE.txt"
+  ],
+  "excluidos_no_texto": [
+   "agents/openai.yaml",
+   "assets/trail-of-bits-mark.svg"
+  ],
+  "sha256_skill": "5c4cff513a0ddd0ad0a82fd0bc4da375a4ad46dc0e8ca776a306ee6a29eb3830",
+  "descripcion_original": "Check code against the documentation that specifies it - which requirements hold, which the code contradicts, which are absent, and what the code does that no document mentions. Use when comparing an implementation against a whitepaper, protocol spec, or design document.",
+  "auditoria": "ok con observaciones: U+200B delante de bloques de código anidados (formato)."
+ },
+ {
+  "id": "semgrep",
+  "fuente": "https://github.com/trailofbits/skills",
+  "autor": "Trail of Bits",
+  "licencia": "CC-BY-SA-4.0",
+  "commit": "2be6433b39e009cd2b6fd3be1895f6b1faa5af9a",
+  "ruta_original": "plugins/static-analysis/skills/semgrep",
+  "archivos": [
+   "references/rulesets.md",
+   "references/scan-modes.md",
+   "SKILL.md",
+   "workflows/scan-workflow.md",
+   "LICENSE.txt"
+  ],
+  "excluidos_no_texto": [
+   "agents/openai.yaml",
+   "assets/trail-of-bits-mark.svg",
+   "scripts/merge_sarif.py",
+   "scripts/run-scans.sh",
+   "scripts/test_merge_sarif.py"
+  ],
+  "sha256_skill": "578a7374820a448d033017769ba1ae1c7525ccd25c1557d3df86f333335d4e04",
+  "descripcion_original": "-",
+  "auditoria": "ok"
+ },
+ {
+  "id": "security-review",
+  "fuente": "https://github.com/github/awesome-copilot",
+  "autor": "GitHub",
+  "licencia": "MIT",
+  "commit": "5269f7ea2d6c3a9bfda5ed878b6726cf509121fd",
+  "ruta_original": "skills/security-review",
+  "archivos": [
+   "references/language-patterns.md",
+   "references/report-format.md",
+   "references/secret-patterns.md",
+   "references/vuln-categories.md",
+   "references/vulnerable-packages.md",
+   "SKILL.md",
+   "LICENSE.txt"
+  ],
+  "excluidos_no_texto": [],
+  "sha256_skill": "002392d88637b89e4cbc409a0531834970937f3b57c0b448a17e04b5ca6d356c",
+  "descripcion_original": "AI-powered codebase security scanner that reasons about code like a security researcher — tracing data flows, understanding component interactions, and catching vulnerabilities that pattern-matching tools miss. Use this skill when asked to scan code for security vulnerabilities, find bugs, check for",
+  "auditoria": "ok con observaciones: Patrones de detección de secretos y la clave de ejemplo oficial de AWS (AKIAIOSFODNN7EXAMPLE)."
+ },
+ {
+  "id": "threat-model-analyst",
+  "fuente": "https://github.com/github/awesome-copilot",
+  "autor": "GitHub",
+  "licencia": "MIT",
+  "commit": "5269f7ea2d6c3a9bfda5ed878b6726cf509121fd",
+  "ruta_original": "skills/threat-model-analyst",
+  "archivos": [
+   "references/analysis-principles.md",
+   "references/diagram-conventions.md",
+   "references/incremental-orchestrator.md",
+   "references/orchestrator.md",
+   "references/output-formats.md",
+   "references/skeletons/skeleton-architecture.md",
+   "references/skeletons/skeleton-assessment.md",
+   "references/skeletons/skeleton-dfd.md",
+   "references/skeletons/skeleton-findings.md",
+   "references/skeletons/skeleton-incremental-html.md",
+   "references/skeletons/skeleton-inventory.md",
+   "references/skeletons/skeleton-stride-analysis.md",
+   "references/skeletons/skeleton-summary-dfd.md",
+   "references/skeletons/skeleton-threatmodel.md",
+   "references/tmt-element-taxonomy.md",
+   "references/verification-checklist.md",
+   "SKILL.md",
+   "LICENSE.txt"
+  ],
+  "excluidos_no_texto": [],
+  "sha256_skill": "cdd72b75b224b20f006cb31602b0b68d0ea27c22a25c9a6458a2cf0b90a25fb3",
+  "descripcion_original": "Full STRIDE-A threat model analysis and incremental update skill for repositories and systems. Supports two modes: (1) Single analysis — full STRIDE-A threat model of a repository, producing architecture overviews, DFD diagrams, STRIDE-A analysis, prioritized findings, and executive assessments. (2)",
+  "auditoria": "ok"
+ },
+ {
+  "id": "github-actions-hardening",
+  "fuente": "https://github.com/github/awesome-copilot",
+  "autor": "GitHub",
+  "licencia": "MIT",
+  "commit": "5269f7ea2d6c3a9bfda5ed878b6726cf509121fd",
+  "ruta_original": "skills/github-actions-hardening",
+  "archivos": [
+   "references/injection.md",
+   "references/permissions-and-tokens.md",
+   "references/report-format.md",
+   "references/supply-chain.md",
+   "references/triggers-and-privilege.md",
+   "SKILL.md",
+   "LICENSE.txt"
+  ],
+  "excluidos_no_texto": [],
+  "sha256_skill": "31a8e7483d978e6267941edefebbe42aaa946bb3d43c9095aa3db343d4a8ff06",
+  "descripcion_original": "Security hardening reviewer for GitHub Actions workflow files (.github/workflows/*.yml). Reasons about the Actions threat model that pattern matchers and general code linters miss — untrusted-input script injection, privileged triggers running fork code, mutable action references, and over-scoped to",
+  "auditoria": "ok con observaciones: Describe ataques de exfiltración en GitHub Actions (material defensivo)."
+ },
+ {
+  "id": "devops-guidelines",
+  "fuente": "https://github.com/github/awesome-copilot",
+  "autor": "GitHub",
+  "licencia": "MIT",
+  "commit": "5269f7ea2d6c3a9bfda5ed878b6726cf509121fd",
+  "ruta_original": "skills/gem-devops-guidelines",
+  "archivos": [
+   "SKILL.md",
+   "LICENSE.txt"
+  ],
+  "excluidos_no_texto": [],
+  "sha256_skill": "6eff334e111eb7ad23e569440c0a2d814da2cdfa0855b57f4520279a27d4c346",
+  "descripcion_original": "Design or review infrastructure, deployment, CI/CD, Docker, Kubernetes, health checks, rollback, feature flags, production readiness, and mobile release workflows. Use for DevOps, platform, container, pipeline, or release tasks.",
+  "auditoria": "ok"
+ },
+ {
+  "id": "prd",
+  "fuente": "https://github.com/github/awesome-copilot",
+  "autor": "GitHub",
+  "licencia": "MIT",
+  "commit": "5269f7ea2d6c3a9bfda5ed878b6726cf509121fd",
+  "ruta_original": "skills/prd",
+  "archivos": [
+   "SKILL.md",
+   "LICENSE.txt"
+  ],
+  "excluidos_no_texto": [],
+  "sha256_skill": "6772e6f0fcc7110d625c7f4595e4990e1910007676c36d217eda4e779041d5e5",
+  "descripcion_original": "Generate high-quality Product Requirements Documents (PRDs) for software systems and AI-powered features. Includes executive summaries, user stories, technical specifications, and risk analysis.",
+  "auditoria": "ok"
+ },
+ {
+  "id": "seguridad-owasp",
+  "fuente": "https://github.com/github/awesome-copilot",
+  "autor": "GitHub",
+  "licencia": "MIT",
+  "commit": "5269f7ea2d6c3a9bfda5ed878b6726cf509121fd",
+  "ruta_original": "instructions/security-and-owasp.instructions.md",
+  "archivos": [
+   "SKILL.md",
+   "LICENSE.txt"
+  ],
+  "excluidos_no_texto": [],
+  "sha256_skill": "fda265da65c56ff0cb4173f7fe552b4301fdd606c711b682e56e5d91e3db4cae",
+  "descripcion_original": "Comprehensive secure coding standards based on OWASP Top 10 2025, with 55+ anti-patterns, detection regex, framework-specific fixes for modern web and backend frameworks, and AI/LLM security guidance.",
+  "auditoria": "ok"
+ },
+ {
+  "id": "plan-de-pruebas",
+  "fuente": "https://github.com/github/awesome-copilot",
+  "autor": "GitHub",
+  "licencia": "MIT",
+  "commit": "5269f7ea2d6c3a9bfda5ed878b6726cf509121fd",
+  "ruta_original": "skills/breakdown-test",
+  "archivos": [
+   "SKILL.md",
+   "LICENSE.txt"
+  ],
+  "excluidos_no_texto": [],
+  "sha256_skill": "83727ec30a986686f1bc8eaeeb42360379c11416a280c4e77d38d39e0e02555f",
+  "descripcion_original": "Test Planning and Quality Assurance prompt that generates comprehensive test strategies, task breakdowns, and quality validation plans for GitHub projects.",
+  "auditoria": "ok"
+ },
+ {
+  "id": "test-gap-audit",
+  "fuente": "https://github.com/github/awesome-copilot",
+  "autor": "GitHub",
+  "licencia": "MIT",
+  "commit": "5269f7ea2d6c3a9bfda5ed878b6726cf509121fd",
+  "ruta_original": "skills/test-gap-audit",
+  "archivos": [
+   "SKILL.md",
+   "LICENSE.txt"
+  ],
+  "excluidos_no_texto": [
+   "scripts/coverage_map.py"
+  ],
+  "sha256_skill": "a7747ac0b60d33ec6a44b9703ae11e8f6bf7aede251f117cc46599d182bfef21",
+  "descripcion_original": "Run a read-only audit for missing, weak, stale, or mis-scoped test coverage. If the user does not name a scope, audit the full repository and identify important code paths, routes, features, services, workflows, and contracts that lack proper tests. If the user names a feature, PR, branch, route, wo",
+  "auditoria": "ok"
+ },
+ {
+  "id": "playwright-generate-test",
+  "fuente": "https://github.com/github/awesome-copilot",
+  "autor": "GitHub",
+  "licencia": "MIT",
+  "commit": "5269f7ea2d6c3a9bfda5ed878b6726cf509121fd",
+  "ruta_original": "skills/playwright-generate-test",
+  "archivos": [
+   "SKILL.md",
+   "LICENSE.txt"
+  ],
+  "excluidos_no_texto": [],
+  "sha256_skill": "79dbb1a49fc5a6502788ccba1a4bd30769a017a1cc31d9db329d1326ea3d898f",
+  "descripcion_original": "Generate a Playwright test based on a scenario using Playwright MCP",
+  "auditoria": "ok"
+ },
+ {
+  "id": "playwright-explore-website",
+  "fuente": "https://github.com/github/awesome-copilot",
+  "autor": "GitHub",
+  "licencia": "MIT",
+  "commit": "5269f7ea2d6c3a9bfda5ed878b6726cf509121fd",
+  "ruta_original": "skills/playwright-explore-website",
+  "archivos": [
+   "SKILL.md",
+   "LICENSE.txt"
+  ],
+  "excluidos_no_texto": [],
+  "sha256_skill": "1496280e250b5b79c2c3081f093fa1fea22ac19a2fdc05074589875cdd9f55d3",
+  "descripcion_original": "Website exploration for testing using Playwright MCP",
+  "auditoria": "ok"
+ },
+ {
+  "id": "web-design-reviewer",
+  "fuente": "https://github.com/github/awesome-copilot",
+  "autor": "GitHub",
+  "licencia": "MIT",
+  "commit": "5269f7ea2d6c3a9bfda5ed878b6726cf509121fd",
+  "ruta_original": "skills/web-design-reviewer",
+  "archivos": [
+   "references/framework-fixes.md",
+   "references/visual-checklist.md",
+   "SKILL.md",
+   "LICENSE.txt"
+  ],
+  "excluidos_no_texto": [],
+  "sha256_skill": "a08a147cfe555dabe30f2c8f2e267f287e992f74f2b802e68989884338e23b17",
+  "descripcion_original": "This skill enables visual inspection of websites running locally or remotely to identify and fix design issues. Triggers on requests like \"review website design\", \"check the UI\", \"fix the layout\", \"find design problems\". Detects issues with responsive design, accessibility, visual consistency, and l",
+  "auditoria": "ok"
+ },
+ {
+  "id": "javascript-typescript-jest",
+  "fuente": "https://github.com/github/awesome-copilot",
+  "autor": "GitHub",
+  "licencia": "MIT",
+  "commit": "5269f7ea2d6c3a9bfda5ed878b6726cf509121fd",
+  "ruta_original": "skills/javascript-typescript-jest",
+  "archivos": [
+   "SKILL.md",
+   "LICENSE.txt"
+  ],
+  "excluidos_no_texto": [],
+  "sha256_skill": "cb9a552dfe63cae4f310b27067ba28351b59ad17e83a9e1c5ff23c542ce6fdd8",
+  "descripcion_original": "Best practices for writing JavaScript/TypeScript tests using Jest, including mocking strategies, test structure, and common patterns.",
+  "auditoria": "ok"
+ },
+ {
+  "id": "pytest-coverage",
+  "fuente": "https://github.com/github/awesome-copilot",
+  "autor": "GitHub",
+  "licencia": "MIT",
+  "commit": "5269f7ea2d6c3a9bfda5ed878b6726cf509121fd",
+  "ruta_original": "skills/pytest-coverage",
+  "archivos": [
+   "SKILL.md",
+   "LICENSE.txt"
+  ],
+  "excluidos_no_texto": [],
+  "sha256_skill": "3778add8809c5aac585ab764090f46e7cfdb009ae3fc9fb308710538627970f9",
+  "descripcion_original": "Run pytest tests with coverage, discover lines missing coverage, and increase coverage to 100%.",
+  "auditoria": "ok"
+ },
+ {
+  "id": "rendimiento",
+  "fuente": "https://github.com/github/awesome-copilot",
+  "autor": "GitHub",
+  "licencia": "MIT",
+  "commit": "5269f7ea2d6c3a9bfda5ed878b6726cf509121fd",
+  "ruta_original": "instructions/performance-optimization.instructions.md",
+  "archivos": [
+   "SKILL.md",
+   "LICENSE.txt"
+  ],
+  "excluidos_no_texto": [],
+  "sha256_skill": "bdcb9c177b86cf193351ed99b54eb1f3be4d5c74941a9d63b8b3c674f4b65a8c",
+  "descripcion_original": "Comprehensive web performance standards based on Core Web Vitals (LCP, INP, CLS), with 50+ anti-patterns, detection regex, framework-specific fixes for modern web frameworks, and modern API guidance.",
+  "auditoria": "ok"
+ },
+ {
+  "id": "accesibilidad",
+  "fuente": "https://github.com/github/awesome-copilot",
+  "autor": "GitHub",
+  "licencia": "MIT",
+  "commit": "5269f7ea2d6c3a9bfda5ed878b6726cf509121fd",
+  "ruta_original": "instructions/a11y.instructions.md",
+  "archivos": [
+   "SKILL.md",
+   "LICENSE.txt"
+  ],
+  "excluidos_no_texto": [],
+  "sha256_skill": "c628e6da42c4b40a907b93c8db0b5a2476cbd060c979e885f21f5c6c643096e6",
+  "descripcion_original": "Comprehensive web accessibility standards based on WCAG 2.2 AA, with 38+ anti-patterns, legal enforcement context (EAA, ADA Title II), WAI-ARIA patterns, and framework-specific fixes for modern web frameworks and libraries.",
+  "auditoria": "ok"
+ },
+ {
+  "id": "property-based-testing",
+  "fuente": "https://github.com/trailofbits/skills",
+  "autor": "Trail of Bits",
+  "licencia": "CC-BY-SA-4.0",
+  "commit": "2be6433b39e009cd2b6fd3be1895f6b1faa5af9a",
+  "ruta_original": "plugins/property-based-testing/skills/property-based-testing",
+  "archivos": [
+   "README.md",
+   "references/generating.md",
+   "references/interpreting-failures.md",
+   "references/libraries.md",
+   "references/refactoring.md",
+   "references/reviewing.md",
+   "SKILL.md",
+   "LICENSE.txt"
+  ],
+  "excluidos_no_texto": [
+   "agents/openai.yaml",
+   "assets/trail-of-bits-mark.svg"
+  ],
+  "sha256_skill": "70965d420dd6d4324562ffb8eaef6df9881851701688d6b1f5a7aa404cb449f7",
+  "descripcion_original": "Writes, reviews, and debugs property-based tests — Hypothesis, fast-check, proptest, jqwik, rapid, and Echidna or Medusa for Solidity invariants. Use whenever tests should cover a whole input domain instead of a hand-picked list of examples: encode/decode and serialize/deserialize pairs, parsers, ca",
+  "auditoria": "ok"
+ },
+ {
+  "id": "mutation-testing",
+  "fuente": "https://github.com/trailofbits/skills",
+  "autor": "Trail of Bits",
+  "licencia": "CC-BY-SA-4.0",
+  "commit": "2be6433b39e009cd2b6fd3be1895f6b1faa5af9a",
+  "ruta_original": "plugins/mutation-testing/skills/mutation-testing",
+  "archivos": [
+   "references/blockchain-patterns.md",
+   "references/equivalent-mutants.md",
+   "references/input-formats.md",
+   "references/optimization-strategies.md",
+   "references/report-template.md",
+   "references/severity-classification.md",
+   "SKILL.md",
+   "workflows/analyzing-results.md",
+   "workflows/bug-hunter.md",
+   "workflows/configuration.md",
+   "LICENSE.txt"
+  ],
+  "excluidos_no_texto": [
+   "agents/openai.yaml",
+   "assets/trail-of-bits-mark.svg"
+  ],
+  "sha256_skill": "d32d3b2a42856acc1dfc404ba0cc67e1846cadc268b83a8b050cdc9b0bb708be",
+  "descripcion_original": "Configures mewt or muton campaigns, analyzes surviving mutants, and investigates bugs exposed by testing gaps. Use when setting up mutation testing, reviewing campaign results, identifying equivalent mutants, or finding bugs from surviving mutations.",
+  "auditoria": "ok"
+ },
+ {
+  "id": "webapp-testing",
+  "fuente": "https://github.com/anthropics/skills",
+  "autor": "Anthropic",
+  "licencia": "Apache-2.0",
+  "commit": "ca45fc496a3436251f191354091d557da31c15b5",
+  "ruta_original": "skills/webapp-testing",
+  "archivos": [
+   "LICENSE.txt",
+   "SKILL.md"
+  ],
+  "excluidos_no_texto": [
+   "examples/console_logging.py",
+   "examples/element_discovery.py",
+   "examples/static_html_automation.py",
+   "scripts/with_server.py"
+  ],
+  "sha256_skill": "8bc27790f6e6dfc2bfa6692326d4518baacf6a31dcc646d963c729adad2f7e34",
+  "descripcion_original": "Toolkit for interacting with and testing local web applications using Playwright. Supports verifying frontend functionality, debugging UI behavior, capturing browser screenshots, and viewing browser logs.",
+  "auditoria": "ok"
+ },
+ {
+  "id": "verification-before-completion",
+  "fuente": "https://github.com/obra/superpowers",
+  "autor": "Jesse Vincent (obra)",
+  "licencia": "MIT",
+  "commit": "2ce8aa15d05bd57213e6f746f953aafb7ded7a8b",
+  "ruta_original": "skills/verification-before-completion",
+  "archivos": [
+   "SKILL.md",
+   "LICENSE.txt"
+  ],
+  "excluidos_no_texto": [],
+  "sha256_skill": "2befe7fc55bcadaa3d97dd9e8efeb633d2561c0ebe74c5a8b17c4d9e7e4520b3",
+  "descripcion_original": "Use when about to claim work is complete, fixed, or passing, before committing or creating PRs - requires running verification commands and confirming output before making any success claims; evidence before assertions always",
+  "auditoria": "ok"
+ },
+ {
+  "id": "systematic-debugging",
+  "fuente": "https://github.com/obra/superpowers",
+  "autor": "Jesse Vincent (obra)",
+  "licencia": "MIT",
+  "commit": "2ce8aa15d05bd57213e6f746f953aafb7ded7a8b",
+  "ruta_original": "skills/systematic-debugging",
+  "archivos": [
+   "condition-based-waiting.md",
+   "CREATION-LOG.md",
+   "defense-in-depth.md",
+   "root-cause-tracing.md",
+   "SKILL.md",
+   "test-academic.md",
+   "test-pressure-1.md",
+   "test-pressure-2.md",
+   "test-pressure-3.md",
+   "LICENSE.txt"
+  ],
+  "excluidos_no_texto": [
+   "condition-based-waiting-example.ts",
+   "find-polluter.sh"
+  ],
+  "sha256_skill": "51c6435d98c83c42c96ba7c35725a0b2c376cd487fb1a4e6bd0ddbe7e33ef202",
+  "descripcion_original": "Use when encountering any bug, test failure, or unexpected behavior, before proposing fixes",
+  "auditoria": "ok"
+ },
+ {
+  "id": "test-driven-development",
+  "fuente": "https://github.com/obra/superpowers",
+  "autor": "Jesse Vincent (obra)",
+  "licencia": "MIT",
+  "commit": "2ce8aa15d05bd57213e6f746f953aafb7ded7a8b",
+  "ruta_original": "skills/test-driven-development",
+  "archivos": [
+   "SKILL.md",
+   "writing-good-tests.md",
+   "LICENSE.txt"
+  ],
+  "excluidos_no_texto": [],
+  "sha256_skill": "64b03fce4aee5a97a93160cea8111f3ba13a17b7c001db4bd5836d67fd10705d",
+  "descripcion_original": "Use when implementing any feature or bugfix, before writing implementation code",
+  "auditoria": "ok"
+ },
+ {
+  "id": "writing-plans",
+  "fuente": "https://github.com/obra/superpowers",
+  "autor": "Jesse Vincent (obra)",
+  "licencia": "MIT",
+  "commit": "2ce8aa15d05bd57213e6f746f953aafb7ded7a8b",
+  "ruta_original": "skills/writing-plans",
+  "archivos": [
+   "SKILL.md",
+   "LICENSE.txt"
+  ],
+  "excluidos_no_texto": [],
+  "sha256_skill": "a6c67c1900064347c2a329990dd3c555657c51c3ec53b259a08aa01a2c26139a",
+  "descripcion_original": "Use when you have a spec or requirements for a multi-step task, before touching code",
+  "auditoria": "ok"
+ },
+ {
+  "id": "requesting-code-review",
+  "fuente": "https://github.com/obra/superpowers",
+  "autor": "Jesse Vincent (obra)",
+  "licencia": "MIT",
+  "commit": "2ce8aa15d05bd57213e6f746f953aafb7ded7a8b",
+  "ruta_original": "skills/requesting-code-review",
+  "archivos": [
+   "code-reviewer.md",
+   "SKILL.md",
+   "LICENSE.txt"
+  ],
+  "excluidos_no_texto": [],
+  "sha256_skill": "2180e14a448e9410bec88e6646a2d1f0ce7fdd58de27388c1e052e929679d2bc",
+  "descripcion_original": "Use when completing tasks, implementing major features, or before merging to verify work meets requirements",
+  "auditoria": "ok"
+ },
+ {
+  "id": "brainstorming",
+  "fuente": "https://github.com/obra/superpowers",
+  "autor": "Jesse Vincent (obra)",
+  "licencia": "MIT",
+  "commit": "2ce8aa15d05bd57213e6f746f953aafb7ded7a8b",
+  "ruta_original": "skills/brainstorming",
+  "archivos": [
+   "builder-check-prompt.md",
+   "SKILL.md",
+   "visual-companion.md",
+   "LICENSE.txt"
+  ],
+  "excluidos_no_texto": [
+   "scripts/frame-template.html",
+   "scripts/helper.js",
+   "scripts/server.cjs",
+   "scripts/start-server.sh",
+   "scripts/stop-server.sh"
+  ],
+  "sha256_skill": "61a7ef918652108c76a3fd01e02dd92d39996c6b46d4cb2819cbd03f6c45e46a",
+  "descripcion_original": "You MUST use this before any creative work - creating features, building components, adding functionality, modifying behavior, or planning anything new, in software or out of it (a talk, a business, a renovation).",
+  "auditoria": "ok"
+ },
+ {
+  "id": "refactor",
+  "fuente": "https://github.com/github/awesome-copilot",
+  "autor": "GitHub",
+  "licencia": "MIT",
+  "commit": "5269f7ea2d6c3a9bfda5ed878b6726cf509121fd",
+  "ruta_original": "skills/refactor",
+  "archivos": [
+   "SKILL.md",
+   "LICENSE.txt"
+  ],
+  "excluidos_no_texto": [],
+  "sha256_skill": "58a38edd230cdcdd866939906321c8ba6f47c98a70d0cda373360196ee2ca1a7",
+  "descripcion_original": "Surgical code refactoring to improve maintainability without changing behavior. Covers extracting functions, renaming variables, breaking down god functions, improving type safety, eliminating code smells, and applying design patterns. Less drastic than repo-rebuilder; use for gradual improvements.",
+  "auditoria": "ok"
+ },
+ {
+  "id": "refactor-plan",
+  "fuente": "https://github.com/github/awesome-copilot",
+  "autor": "GitHub",
+  "licencia": "MIT",
+  "commit": "5269f7ea2d6c3a9bfda5ed878b6726cf509121fd",
+  "ruta_original": "skills/refactor-plan",
+  "archivos": [
+   "SKILL.md",
+   "LICENSE.txt"
+  ],
+  "excluidos_no_texto": [],
+  "sha256_skill": "93741df0042a15c01ae8589e72014dcf53c557c11ca1df69c29737534c312c29",
+  "descripcion_original": "Create a concrete plan before starting a multi-file refactor. Use when the user asks to plan, sequence, scope, or safely execute a refactor across multiple files; always investigate first, output the plan, and wait for confirmation before making code changes.",
+  "auditoria": "ok"
+ },
+ {
+  "id": "cloud-design-patterns",
+  "fuente": "https://github.com/github/awesome-copilot",
+  "autor": "GitHub",
+  "licencia": "MIT",
+  "commit": "5269f7ea2d6c3a9bfda5ed878b6726cf509121fd",
+  "ruta_original": "skills/cloud-design-patterns",
+  "archivos": [
+   "references/architecture-design.md",
+   "references/azure-service-mappings.md",
+   "references/best-practices.md",
+   "references/deployment-operational.md",
+   "references/event-driven.md",
+   "references/messaging-integration.md",
+   "references/performance.md",
+   "references/reliability-resilience.md",
+   "references/security.md",
+   "SKILL.md",
+   "LICENSE.txt"
+  ],
+  "excluidos_no_texto": [],
+  "sha256_skill": "69b0e14a0011137f7253f90b85745eba1710d8849710e3b5b677e3bf9dfe6320",
+  "descripcion_original": "Cloud design patterns for distributed systems architecture covering 42 industry-standard patterns across reliability, performance, messaging, security, and deployment categories. Use when designing, reviewing, or implementing distributed system architectures.",
+  "auditoria": "ok"
+ },
+ {
+  "id": "adr",
+  "fuente": "https://github.com/github/awesome-copilot",
+  "autor": "GitHub",
+  "licencia": "MIT",
+  "commit": "5269f7ea2d6c3a9bfda5ed878b6726cf509121fd",
+  "ruta_original": "skills/create-architectural-decision-record",
+  "archivos": [
+   "SKILL.md",
+   "LICENSE.txt"
+  ],
+  "excluidos_no_texto": [],
+  "sha256_skill": "c11af0c34fa034e36e622ad97f1194824c3cbbe675a8b17cdc0bedc91b188a72",
+  "descripcion_original": "Create an Architectural Decision Record (ADR) document for AI-optimized decision documentation.",
+  "auditoria": "ok"
+ },
+ {
+  "id": "architecture-blueprint",
+  "fuente": "https://github.com/github/awesome-copilot",
+  "autor": "GitHub",
+  "licencia": "MIT",
+  "commit": "5269f7ea2d6c3a9bfda5ed878b6726cf509121fd",
+  "ruta_original": "skills/architecture-blueprint-generator",
+  "archivos": [
+   "SKILL.md",
+   "LICENSE.txt"
+  ],
+  "excluidos_no_texto": [],
+  "sha256_skill": "a6a6f7a3b7a8210a9a391f2da3f3945bf86505341fd677eb2eb62e599520f512",
+  "descripcion_original": "Comprehensive project architecture blueprint generator that analyzes codebases to create detailed architectural documentation. Automatically detects technology stacks and architectural patterns, generates visual diagrams, documents implementation patterns, and provides extensible blueprints for main",
+  "auditoria": "ok"
+ },
+ {
+  "id": "documentation-writer",
+  "fuente": "https://github.com/github/awesome-copilot",
+  "autor": "GitHub",
+  "licencia": "MIT",
+  "commit": "5269f7ea2d6c3a9bfda5ed878b6726cf509121fd",
+  "ruta_original": "skills/documentation-writer",
+  "archivos": [
+   "SKILL.md",
+   "LICENSE.txt"
+  ],
+  "excluidos_no_texto": [],
+  "sha256_skill": "7e8244988c9f4eb63bf8c0edf160578544621eb96e5e51e2d848f1401c5de8f1",
+  "descripcion_original": "Diátaxis Documentation Expert. An expert technical writer specializing in creating high-quality software documentation, guided by the principles and structure of the Diátaxis technical documentation authoring framework.",
+  "auditoria": "ok"
+ },
+ {
+  "id": "patrones-de-diseno",
+  "fuente": "https://github.com/github/awesome-copilot",
+  "autor": "GitHub",
+  "licencia": "MIT",
+  "commit": "5269f7ea2d6c3a9bfda5ed878b6726cf509121fd",
+  "ruta_original": "instructions/oop-design-patterns.instructions.md",
+  "archivos": [
+   "SKILL.md",
+   "LICENSE.txt"
+  ],
+  "excluidos_no_texto": [],
+  "sha256_skill": "cfb3bf94135d6014b508b7b32b8f9e145d326d98e6ed63e3d73b1d2d676a65bb",
+  "descripcion_original": "Best practices for applying Object-Oriented Programming (OOP) design patterns, including Gang of Four (GoF) patterns and SOLID principles, to ensure clean, maintainable, and scalable code.",
+  "auditoria": "ok"
+ },
+ {
+  "id": "object-calisthenics",
+  "fuente": "https://github.com/github/awesome-copilot",
+  "autor": "GitHub",
+  "licencia": "MIT",
+  "commit": "5269f7ea2d6c3a9bfda5ed878b6726cf509121fd",
+  "ruta_original": "instructions/object-calisthenics.instructions.md",
+  "archivos": [
+   "SKILL.md",
+   "LICENSE.txt"
+  ],
+  "excluidos_no_texto": [],
+  "sha256_skill": "4036c5be6c142b8c4ef1f15ab1da77e32a16e80fff5711586cf549726b4b91d2",
+  "descripcion_original": "Enforces Object Calisthenics principles for business domain code to ensure clean, maintainable, and robust code",
+  "auditoria": "ok"
+ },
+ {
+  "id": "code-review",
+  "fuente": "https://github.com/github/awesome-copilot",
+  "autor": "GitHub",
+  "licencia": "MIT",
+  "commit": "5269f7ea2d6c3a9bfda5ed878b6726cf509121fd",
+  "ruta_original": "instructions/code-review-generic.instructions.md",
+  "archivos": [
+   "SKILL.md",
+   "LICENSE.txt"
+  ],
+  "excluidos_no_texto": [],
+  "sha256_skill": "2d287526de4b067c5b8176e5e80b89e3677fdbb8e761dbcdac3660294f6b8ddb",
+  "descripcion_original": "Generic code review instructions that can be customized for any project using GitHub Copilot",
+  "auditoria": "ok"
+ },
+ {
+  "id": "frontend-design",
+  "fuente": "https://github.com/anthropics/skills",
+  "autor": "Anthropic",
+  "licencia": "Apache-2.0",
+  "commit": "ca45fc496a3436251f191354091d557da31c15b5",
+  "ruta_original": "skills/frontend-design",
+  "archivos": [
+   "LICENSE.txt",
+   "SKILL.md"
+  ],
+  "excluidos_no_texto": [],
+  "sha256_skill": "b8009ae690dfa69edc7f08bb8715f32db8817112cfa4388741dbaf876c237df8",
+  "descripcion_original": "Guidance for distinctive, intentional visual design when building new UI or reshaping an existing one. Helps with aesthetic direction, typography, and making choices that don't read as templated defaults.",
+  "auditoria": "ok"
+ },
+ {
+  "id": "react-best-practices",
+  "fuente": "https://github.com/vercel-labs/agent-skills",
+  "autor": "Vercel",
+  "licencia": "MIT",
+  "commit": "1a2c79d4e6c4a2283dc2c614b6538cbe1ed5ca62",
+  "ruta_original": "skills/react-best-practices",
+  "archivos": [
+   "AGENTS.md",
+   "README.md",
+   "rules/_sections.md",
+   "rules/_template.md",
+   "rules/advanced-effect-event-deps.md",
+   "rules/advanced-event-handler-refs.md",
+   "rules/advanced-init-once.md",
+   "rules/advanced-use-latest.md",
+   "rules/async-api-routes.md",
+   "rules/async-cheap-condition-before-await.md",
+   "rules/async-defer-await.md",
+   "rules/async-dependencies.md",
+   "rules/async-parallel.md",
+   "rules/async-suspense-boundaries.md",
+   "rules/bundle-analyzable-paths.md",
+   "rules/bundle-barrel-imports.md",
+   "rules/bundle-conditional.md",
+   "rules/bundle-defer-third-party.md",
+   "rules/bundle-dynamic-imports.md",
+   "rules/bundle-preload.md",
+   "rules/client-event-listeners.md",
+   "rules/client-localstorage-schema.md",
+   "rules/client-passive-event-listeners.md",
+   "rules/client-swr-dedup.md",
+   "rules/js-batch-dom-css.md",
+   "rules/js-cache-function-results.md",
+   "rules/js-cache-property-access.md",
+   "rules/js-cache-storage.md",
+   "rules/js-combine-iterations.md",
+   "rules/js-early-exit.md",
+   "rules/js-flatmap-filter.md",
+   "rules/js-hoist-regexp.md",
+   "rules/js-index-maps.md",
+   "rules/js-length-check-first.md",
+   "rules/js-min-max-loop.md",
+   "rules/js-request-idle-callback.md",
+   "rules/js-set-map-lookups.md",
+   "rules/js-tosorted-immutable.md",
+   "rules/rendering-activity.md",
+   "rules/rendering-animate-svg-wrapper.md",
+   "rules/rendering-conditional-render.md",
+   "rules/rendering-content-visibility.md",
+   "rules/rendering-hoist-jsx.md",
+   "rules/rendering-hydration-no-flicker.md",
+   "rules/rendering-hydration-suppress-warning.md",
+   "rules/rendering-resource-hints.md",
+   "rules/rendering-script-defer-async.md",
+   "rules/rendering-svg-precision.md",
+   "rules/rendering-usetransition-loading.md",
+   "rules/rerender-defer-reads.md",
+   "rules/rerender-dependencies.md",
+   "rules/rerender-derived-state-no-effect.md",
+   "rules/rerender-derived-state.md",
+   "rules/rerender-functional-setstate.md",
+   "rules/rerender-lazy-state-init.md",
+   "rules/rerender-memo-with-default-value.md",
+   "rules/rerender-memo.md",
+   "rules/rerender-move-effect-to-event.md",
+   "rules/rerender-no-inline-components.md",
+   "rules/rerender-simple-expression-in-memo.md",
+   "rules/rerender-split-combined-hooks.md",
+   "rules/rerender-transitions.md",
+   "rules/rerender-use-deferred-value.md",
+   "rules/rerender-use-ref-transient-values.md",
+   "rules/server-after-nonblocking.md",
+   "rules/server-auth-actions.md",
+   "rules/server-cache-lru.md",
+   "rules/server-cache-react.md",
+   "rules/server-dedup-props.md",
+   "rules/server-hoist-static-io.md",
+   "rules/server-no-shared-module-state.md",
+   "rules/server-parallel-fetching.md",
+   "rules/server-parallel-nested-fetching.md",
+   "rules/server-serialization.md",
+   "SKILL.md"
+  ],
+  "excluidos_no_texto": [
+   "metadata.json"
+  ],
+  "sha256_skill": "3286ace648b4d740317b9c1cb7fbd38600eaacc62a8b57ea5e06fd2992b5582e",
+  "descripcion_original": "React and Next.js performance optimization guidelines from Vercel Engineering. This skill should be used when writing, reviewing, or refactoring React/Next.js code to ensure optimal performance patterns. Triggers on tasks involving React components, Next.js pages, data fetching, bundle optimization,",
+  "auditoria": "ok"
+ },
+ {
+  "id": "web-design-guidelines",
+  "fuente": "https://github.com/vercel-labs/agent-skills",
+  "autor": "Vercel",
+  "licencia": "MIT",
+  "commit": "1a2c79d4e6c4a2283dc2c614b6538cbe1ed5ca62",
+  "ruta_original": "skills/web-design-guidelines",
+  "archivos": [
+   "SKILL.md",
+   "references/guidelines.md"
+  ],
+  "excluidos_no_texto": [],
+  "sha256_skill": "8bb258c45bd216322482d5741f78eab2f455b4fef77928fe537ed09f831770f8",
+  "descripcion_original": "Review UI code for Web Interface Guidelines compliance. Use when asked to \"review my UI\", \"check accessibility\", \"audit design\", \"review UX\", or \"check my site against best practices\".",
+  "modificado": "SKILL.md ya no descarga las reglas en cada uso: se agregó references/guidelines.md, copia revisada de https://raw.githubusercontent.com/vercel-labs/web-interface-guidelines/main/command.md (commit 434b7f91364665f2f733b310ec54809bf8f37937)",
+  "auditoria": "ok con observaciones: Instruía descargar reglas remotas en cada uso: reemplazado por copia local revisada."
+ },
+ {
+  "id": "react-composition-patterns",
+  "fuente": "https://github.com/vercel-labs/agent-skills",
+  "autor": "Vercel",
+  "licencia": "MIT",
+  "commit": "1a2c79d4e6c4a2283dc2c614b6538cbe1ed5ca62",
+  "ruta_original": "skills/composition-patterns",
+  "archivos": [
+   "AGENTS.md",
+   "README.md",
+   "rules/_sections.md",
+   "rules/_template.md",
+   "rules/architecture-avoid-boolean-props.md",
+   "rules/architecture-compound-components.md",
+   "rules/patterns-children-over-render-props.md",
+   "rules/patterns-explicit-variants.md",
+   "rules/react19-no-forwardref.md",
+   "rules/state-context-interface.md",
+   "rules/state-decouple-implementation.md",
+   "rules/state-lift-state.md",
+   "SKILL.md"
+  ],
+  "excluidos_no_texto": [
+   "metadata.json"
+  ],
+  "sha256_skill": "fb8f849b4d46c0c4d364ae6fb398a5cb693b54f9a4c31765a1ec0689c7cb93d5",
+  "descripcion_original": "React composition patterns that scale. Use when refactoring components with",
+  "auditoria": "ok"
+ },
+ {
+  "id": "premium-frontend-ui",
+  "fuente": "https://github.com/github/awesome-copilot",
+  "autor": "GitHub",
+  "licencia": "MIT",
+  "commit": "5269f7ea2d6c3a9bfda5ed878b6726cf509121fd",
+  "ruta_original": "skills/premium-frontend-ui",
+  "archivos": [
+   "SKILL.md",
+   "LICENSE.txt"
+  ],
+  "excluidos_no_texto": [],
+  "sha256_skill": "b7edf35b33931d15ea0c1d271f3c05d469e2b6923ed4df1c955d4da86287d9fb",
+  "descripcion_original": "A comprehensive guide for GitHub Copilot to craft immersive, high-performance web experiences with advanced motion, typography, and architectural craftsmanship.",
+  "auditoria": "ok"
+ },
+ {
+  "id": "react-container-presentation",
+  "fuente": "https://github.com/github/awesome-copilot",
+  "autor": "GitHub",
+  "licencia": "MIT",
+  "commit": "5269f7ea2d6c3a9bfda5ed878b6726cf509121fd",
+  "ruta_original": "skills/react-container-presentation-component",
+  "archivos": [
+   "references/component-architecture.md",
+   "references/typescript-and-scss-rules.md",
+   "SKILL.md",
+   "LICENSE.txt"
+  ],
+  "excluidos_no_texto": [],
+  "sha256_skill": "a9c167eeafa799ac1647bf3bf3cb588099bcba1dfea7821fae0d86e8fc6676d7",
+  "descripcion_original": "Create a React component using the Container/Presentation pattern in src/components by asking for the component name and type (ui or features), then scaffold files that follow this repository's TypeScript, Storybook, and SCSS conventions. Use when the user explicitly asks for a Container/Presentatio",
+  "auditoria": "ok"
+ },
+ {
+  "id": "analisis-funcional",
+  "fuente": "propia (este proyecto)",
+  "autor": "proyecto agentes",
+  "licencia": "la del repositorio",
+  "archivos": [
+   "SKILL.md"
+  ],
+  "excluidos_no_texto": [],
+  "sha256_skill": "7fe18798f211b69276cff2f7f9f917222acef69716c3d8cb4b88b34fdb2237a2",
+  "descripcion_original": "Relevar y documentar requerimientos: actores, casos de uso, historias de usuario con criterios de aceptación, reglas de negocio y trazabilidad",
+  "auditoria": "escrita para el proyecto a partir de las fuentes citadas al final de la skill"
+ },
+ {
+  "id": "bootstrap-5",
+  "fuente": "propia (este proyecto)",
+  "autor": "proyecto agentes",
+  "licencia": "la del repositorio",
+  "archivos": [
+   "SKILL.md"
+  ],
+  "excluidos_no_texto": [],
+  "sha256_skill": "084004126ca8149baa9d30a95f179959d2d9977b46998a2c08fde18e95c8b26b",
+  "descripcion_original": "Construir interfaces con Bootstrap 5 y React-Bootstrap: grilla, componentes, utilidades, temas y accesibilidad",
+  "auditoria": "escrita para el proyecto a partir de las fuentes citadas al final de la skill"
+ },
+ {
+  "id": "calidad-iso-25010",
+  "fuente": "propia (este proyecto)",
+  "autor": "proyecto agentes",
+  "licencia": "la del repositorio",
+  "archivos": [
+   "SKILL.md"
+  ],
+  "excluidos_no_texto": [],
+  "sha256_skill": "d9607a32a7acba728ba352de76b1472d2af61e3e50b7f3648f3e9a40edbe4a7b",
+  "descripcion_original": "Definir y evaluar requisitos no funcionales con el modelo ISO/IEC 25010: rendimiento, seguridad, usabilidad, confiabilidad, mantenibilidad, portabilidad",
+  "auditoria": "escrita para el proyecto a partir de las fuentes citadas al final de la skill"
+ },
+ {
+  "id": "codigo-limpio",
+  "fuente": "propia (este proyecto)",
+  "autor": "proyecto agentes",
+  "licencia": "la del repositorio",
+  "archivos": [
+   "SKILL.md"
+  ],
+  "excluidos_no_texto": [],
+  "sha256_skill": "3a6378c2ddd23bff8b5b42acdfffe8494ec952f0280dffee6ea1ede55091eb77",
+  "descripcion_original": "Escribir y revisar código limpio: nombres, funciones, manejo de errores, duplicación, comentarios y tests legibles",
+  "auditoria": "escrita para el proyecto a partir de las fuentes citadas al final de la skill"
+ },
+ {
+  "id": "heuristicas-ux",
+  "fuente": "propia (este proyecto)",
+  "autor": "proyecto agentes",
+  "licencia": "la del repositorio",
+  "archivos": [
+   "SKILL.md"
+  ],
+  "excluidos_no_texto": [],
+  "sha256_skill": "dd76f8fcb38ebdc49536215ca7889b706ff344a14d4b003e0ebd3f74606d2785",
+  "descripcion_original": "Evaluar la experiencia de usuario con las 10 heurísticas de Nielsen, severidad de problemas y recomendaciones",
+  "auditoria": "escrita para el proyecto a partir de las fuentes citadas al final de la skill"
+ },
+ {
+  "id": "principios-solid",
+  "fuente": "propia (este proyecto)",
+  "autor": "proyecto agentes",
+  "licencia": "la del repositorio",
+  "archivos": [
+   "SKILL.md"
+  ],
+  "excluidos_no_texto": [],
+  "sha256_skill": "fec3f314dceb49f879767a886f00b36360532f1fbea23d26b3070aa9ce40882b",
+  "descripcion_original": "Aplicar y revisar los principios SOLID en diseño orientado a objetos: detectar violaciones y proponer refactors concretos",
+  "auditoria": "escrita para el proyecto a partir de las fuentes citadas al final de la skill"
+ },
+ {
+  "id": "seguridad-contenedores-infra",
+  "fuente": "propia (este proyecto)",
+  "autor": "proyecto agentes",
+  "licencia": "la del repositorio",
+  "archivos": [
+   "SKILL.md"
+  ],
+  "excluidos_no_texto": [],
+  "sha256_skill": "fab0eaf24087c1272a4963af803fa5c6a86d1493ee6b28b8c3b99382b2ba8a23",
+  "descripcion_original": "Revisar la seguridad de Docker, Compose, Kubernetes y servidores: imágenes, secretos, red, permisos y exposición",
+  "auditoria": "escrita para el proyecto a partir de las fuentes citadas al final de la skill"
+ },
+ {
+  "id": "vision-fundamentos",
+  "fuente": "propia (este proyecto)",
+  "autor": "proyecto agentes",
+  "licencia": "la del repositorio",
+  "archivos": [
+   "SKILL.md"
+  ],
+  "excluidos_no_texto": [],
+  "sha256_skill": "0e0c7e7d393c6c536eb5dece16fead75aa321a32c00317b1f0a46d3f80180471",
+  "descripcion_original": "Diseñar y evaluar soluciones de visión por computadora: tarea, datos, modelo, métricas, despliegue en GPU o edge y privacidad",
+  "auditoria": "escrita para el proyecto a partir de las fuentes citadas al final de la skill"
+ }
+]

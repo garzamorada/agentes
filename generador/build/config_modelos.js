@@ -35,34 +35,16 @@ const CONFIG = {
     'ollama/qwen3:14b':                        { rpm: 30 },
     'ollama/gemma4:12b':                       { rpm: 30 },
   },
-  // Orden de preferencia NVIDIA por especialidad (el primero es el ideal).
-  // Medido 30/10/2026: mistral-large-4 es lento (~20s+ razonando); glm-5.3, gemma-4,
-  // laguna y nano-omni tardaron >45s, por eso quedan como respaldo.
-  agents: {
-    orquestador:              ['nvidia/nemotron-3-ultra-550b-a55b', 'deepseek-ai/deepseek-v4.1-flash', 'minimaxai/minimax-m3.1-flash', 'mistralai/mistral-large-4-1t-a52b'],
-    general:                  ['nvidia/nemotron-3.5-lightning-30b-a3b', 'deepseek-ai/deepseek-v4.1-flash', 'nvidia/nemotron-3-ultra-550b-a55b', 'openai/gpt-oss-20b'],
-    // Revisión final: modelos rápidos primero (ultra tardó >100 s en revisar, 30/10/2026)
-    verificador:              ['nvidia/nemotron-3.5-lightning-30b-a3b', 'deepseek-ai/deepseek-v4.1-flash', 'minimaxai/minimax-m3.1-flash', 'nvidia/nemotron-3-ultra-550b-a55b'],
-    sintesis:                 ['nvidia/nemotron-3-ultra-550b-a55b', 'deepseek-ai/deepseek-v4.1-flash', 'mistralai/mistral-large-4-1t-a52b', 'nvidia/nemotron-3.5-lightning-30b-a3b'],
-    // Gráficos e imágenes: modelos rápidos y buenos armando JSON
-    visualizacion:            ['nvidia/nemotron-3.5-lightning-30b-a3b', 'deepseek-ai/deepseek-v4.1-flash', 'minimaxai/minimax-m3.1-flash', 'nvidia/nemotron-3-ultra-550b-a55b'],
-    agentic_ai:               ['nvidia/nemotron-3-ultra-550b-a55b', 'minimaxai/minimax-m3.1-flash', 'deepseek-ai/deepseek-v4.1-flash', 'nvidia/nemotron-3.5-lightning-30b-a3b'],
-    fisica_robotica:          ['nvidia/nemotron-3-ultra-550b-a55b', 'nvidia/nemotron-3.5-super-vl-120b-a12b', 'deepseek-ai/deepseek-v4.1-flash', 'nvidia/nemotron-3-nano-omni-30b-a3b-reasoning'],
-    vision:                   ['nvidia/nemotron-3.5-super-vl-120b-a12b', 'meta/muse-glimmer-30b', 'z-ai/glm-5.3-flash', 'nvidia/nemotron-3-nano-omni-30b-a3b-reasoning'],
-    entrenamiento_inferencia: ['deepseek-ai/deepseek-v4.1-flash', 'nvidia/nemotron-3-ultra-550b-a55b', 'stepfun-ai/step-5-preview', 'mistralai/mistral-large-4-1t-a52b'],
-    datos_optimizacion:       ['openai/gpt-oss-20b', 'deepseek-ai/deepseek-v4.1-flash', 'nvidia/nemotron-3-ultra-550b-a55b', 'mistralai/mistral-large-4-1t-a52b'],
-    gpu_dev:                  ['stepfun-ai/step-5-preview', 'minimaxai/minimax-m3.1-flash', 'deepseek-ai/deepseek-v4.1-flash', 'poolside/laguna-xs-2.1'],
-    infra_redes:              ['minimaxai/minimax-m3.1-flash', 'nvidia/nemotron-3-ultra-550b-a55b', 'deepseek-ai/deepseek-v4.1-flash', 'poolside/laguna-xs-2.1'],
-    salud_ciencias:           ['nvidia/nemotron-3-ultra-550b-a55b', 'mistralai/mistral-large-4-1t-a52b', 'deepseek-ai/deepseek-v4.1-flash', 'google/gemma-4-31b-it'],
-  },
-  // Modelos locales por especialidad (todos soportan tool calling). Instalados (31/10/2026):
+  // Orden de preferencia de modelos de cada agente: sale de generador/agentes/<id>.json ("modelos"); gen.py lo inserta acá.
+  // Medido 30/10/2026: mistral-large-4 es lento (~20s+ razonando); glm-5.3, gemma-4, laguna y nano-omni tardaron >45s,
+  // por eso quedan como respaldo. Para orquestador, síntesis y verificador, ver AGENTES_SISTEMA en gen.py.
+  agents: __MODELOS_NVIDIA__,
+  // Modelos locales (todos soportan tool calling). Instalados (31/10/2026):
   // nemotron-3.5-bolt:e4b (7,9 GB) y nemotron-3-nano:4b (2,8 GB) entran juntos en la GPU de 12 GB y se alternan
   // por "slot"; qwen3:14b (9,3 GB) es el de mejor calidad para razonar y código; gemma4:12b (8 GB) entiende imágenes.
   ollama: {
-    default:     ['ollama/nemotron-3.5-bolt:e4b', 'ollama/nemotron-3-nano:4b', 'ollama/qwen3:14b', 'ollama/gemma4:12b'],
-    gpu_dev:     ['ollama/qwen3:14b', 'ollama/gemma4:12b'],
-    infra_redes: ['ollama/qwen3:14b', 'ollama/gemma4:12b'],
-    vision:      ['ollama/gemma4:12b', 'ollama/nemotron-3.5-bolt:e4b', 'ollama/qwen3:14b'],
+    default: ['ollama/nemotron-3.5-bolt:e4b', 'ollama/nemotron-3-nano:4b', 'ollama/qwen3:14b', 'ollama/gemma4:12b'],
+    ...__MODELOS_OLLAMA__,
   },
   // Si se agota toda la lista del agente, sigue con estos
   fallbackGeneral: [

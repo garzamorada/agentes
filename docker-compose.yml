@@ -139,6 +139,8 @@ services:
       - ./documentos_generados:/data
       # Estado del router de modelos de n8n (usos, pausas, errores)
       - router_estado:/estado
+      # Skills auditadas de los agentes (solo lectura; las lee la herramienta leer_skill)
+      - ./skills:/skills:ro
     environment:
       - MCP_API_KEY=${MCP_API_KEY:?Falta MCP_API_KEY en .env}
       - PUBLIC_URL=${DOC_PUBLIC_URL:-http://localhost:8090}

@@ -33,12 +33,13 @@ if (prev.agent === 'orquestador') {
     ? `Revisión: falta ${falta.join('; ').slice(0, 200)} — se completa`
     : 'Revisión: la respuesta cumple todo lo pedido');
 } else {
-  await avisar('listo', prev.agent === 'sintesis' ? 'Respuesta integrada' : `${prev.agent} terminó`);
+  await avisar('listo', prev.agent === 'sintesis' ? 'Respuesta integrada' : `${prev.agente_nombre || prev.agent} terminó`);
 }
 
 return {
   json: {
     agent: prev.agent,
+    nombre: prev.agente_nombre || null,
     tarea: prev.prompt,
     model: prev.model,
     proveedor: prev.provider,

@@ -58,7 +58,7 @@ if (!chosen) {
 
 const que = j.agent === 'orquestador' ? 'Planificando el pedido' : j.agent === 'sintesis' ? 'Integrando las respuestas'
   : j.agent === 'verificador' ? 'Revisando que la respuesta cumpla todo lo pedido'
-  : j.fase === 'correccion' ? `${j.agent}: completando lo que faltó` : `${j.agent}: trabajando`;
+  : j.fase === 'correccion' ? `${j.agente_nombre || j.agent}: completando lo que faltó` : `${j.agente_nombre || j.agent}: trabajando`;
 await avisar('modelo', `${que} con ${corto(chosen)}${r.tried.length ? ' (reintento)' : ''}`,
   { modelo: chosen, proveedor: isOllama(chosen) ? 'ollama' : 'nvidia' });
 
