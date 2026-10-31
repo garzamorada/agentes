@@ -239,3 +239,15 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .ingreso-caja p { margin: 0; color: var(--suave); font-size: 14px; }
 .ingreso-caja input { padding: 10px 12px; border-radius: 8px; border: 1px solid var(--borde); background: var(--fondo); color: var(--texto); font: inherit; }
 .ingreso-caja input:focus { outline: 2px solid var(--acento); border-color: transparent; }
+
+/* ---------- imágenes en las respuestas ---------- */
+.markdown img { display: inline-block; max-width: min(100%, 560px); max-height: 560px; border-radius: 10px; border: 1px solid var(--borde);
+  cursor: zoom-in; margin: 6px 6px 6px 0; background: var(--codigo); vertical-align: top; transition: transform .15s; }
+.markdown img:hover { transform: scale(1.01); }
+.markdown p:has(> img + img), .markdown p:has(> img + br + img) { display: flex; flex-wrap: wrap; gap: 8px; }
+.markdown p:has(> img + img) img, .markdown p:has(> img + br + img) img { max-width: calc(50% - 8px); margin: 0; }
+.visor { position: fixed; inset: 0; z-index: 50; background: #000d; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; padding: 16px; }
+.visor img { max-width: 100%; max-height: calc(100vh - 110px); border-radius: 8px; box-shadow: 0 10px 40px #0008; cursor: default; }
+.visor-barra { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 8px; color: #fff; }
+.visor-barra .btn { background: #ffffff1a; border-color: #ffffff33; color: #fff; }
+.visor-nombre { font-size: 13px; opacity: .85; max-width: 60vw; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

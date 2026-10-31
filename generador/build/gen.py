@@ -57,14 +57,15 @@ catalog = {
 # Skills propias del proyecto (no son de NVIDIA): visualización con las herramientas del MCP
 catalog['visualizacion'] = {
     'nombre': 'Agente de gráficos e imágenes',
-    'alcance': 'gráficos de datos, diagramas, portadas y banners, edición de imágenes y capturas, infografías y tableros visuales',
+    'alcance': 'gráficos de datos, diagramas, imágenes generadas con IA, portadas y banners, edición de imágenes y capturas, infografías',
     'propias': True,
     'skills': [
         'grafico-elegir-tipo — Elegir el gráfico según la pregunta: comparar, evolución, partes de un total, relación, distribución o grilla',
         'grafico-crear — Gráfico PNG/SVG con crear_grafico: barras, horizontales, apiladas, línea, área, torta, dona, dispersión, histograma, mapa de calor',
         'grafico-desde-datos — Graficar datos de un adjunto, una tabla del usuario o una página web (navegador → extraer tablas), citando la fuente',
         'diagrama-crear — Flujos, procesos, organigramas, arquitecturas y mapas conceptuales con crear_diagrama (nunca Mermaid ni ASCII)',
-        'imagen-portada — Portadas, banners y placas para redes con crear_imagen (tamaños y colores a medida)',
+        'imagen-ia — Imágenes nuevas con IA (Stable Diffusion XL en la GPU) con generar_imagen: fotos, ilustraciones, logos, fondos, escenas',
+        'imagen-portada — Portadas, banners y placas para redes con texto legible con crear_imagen (tamaños y colores a medida)',
         'imagen-editar — Redimensionar, recortar, agregar texto, collage, convertir, rotar, grises y borde con editar_imagen',
         'infografia-documento — Informes visuales: varios gráficos y diagramas en un PDF, Word, Excel o HTML con generar_documento',
     ],
@@ -99,8 +100,9 @@ Agentes disponibles:
 ${lista}
 
 Todos los agentes tienen herramientas (servidor MCP): calculadora, fecha/hora, conversor de unidades, tablas, lector de archivos por URL,
-búsqueda web, navegador (abrir páginas, hacer clic, escribir en buscadores, capturas de pantalla)
-y generador de documentos (HTML, PDF, Word, Excel con gráficos, Markdown).
+búsqueda web, navegador real (abrir páginas, hacer clic, completar formularios, extraer tablas, capturas de pantalla),
+cómo llegar con Google Maps (colectivo, subte, auto, a pie), gráficos, diagramas, imágenes generadas con IA
+y generador de documentos (HTML, PDF, Word, Excel con gráficos, Markdown). Tú no ves esas herramientas, pero los agentes sí.
 Si el pedido necesita datos actuales de internet (precios, noticias, versiones) o capturas, indicalo en la tarea ("buscá en la web…").
 Si el usuario pide un archivo o un gráfico, asigná su creación a UN solo agente (el que tiene el contenido) y escribí en su tarea
 qué formatos generar con generar_documento (por ejemplo "generá un PDF y un Excel con gráfico de barras").
@@ -116,7 +118,13 @@ Reglas:
 - Elegí el agente cuya lista de skills contiene las skills que resuelven el pedido (por ejemplo, Jetson → fisica_robotica).
 - Todo lo que mencione productos, herramientas o skills de NVIDIA va a un agente especialista, NUNCA a "general".
 - "general" es solo para partes que no necesitan skills de NVIDIA (cálculos, fechas, conversiones, archivos, tablas).
-- Gráficos, diagramas, portadas, banners, infografías o editar imágenes y capturas → "visualizacion". Si además hay que
+- Gráficos, diagramas, imágenes generadas con IA (fotos, ilustraciones, logos), portadas, banners, infografías o
+  editar imágenes y capturas → "visualizacion".
+- Rutas y "cómo llegar" (colectivo, subte, auto, a pie), datos de una página web o completar un formulario web → "general"
+  con complejidad "compleja", indicando en la tarea que use la herramienta (como_llegar, navegador).
+- NUNCA planifiques una tarea de "explicar que no se puede" o "decir qué herramientas hay": los agentes pueden navegar,
+  completar formularios, buscar rutas y generar imágenes. Si el usuario pide "reintentá", repetí su pedido anterior
+  (está en la conversación previa) como tarea concreta. Si además hay que
   conseguir los datos (de la web o de un archivo), que lo haga el mismo agente en la misma tarea.
 - Si el pedido tiene partes de distinto tipo, separalas en subtareas distintas para que corran en paralelo.
 - Usá el mínimo de subtareas necesario. Si el pedido es simple y de un solo tipo, una sola.
@@ -143,6 +151,8 @@ Revisá punto por punto:
 4. Si es un pedido de seguimiento (por ejemplo "agregale gráficos"), lo nuevo tiene que estar incorporado.
 No evalúes estilo ni redacción, no pidas mejoras opcionales y no inventes requisitos que el usuario no pidió.
 Un link a un archivo cuenta como entregado: no podés abrirlo.
+Tampoco podés ver imágenes: si la respuesta muestra la imagen pedida (![...](url)) generada con una herramienta,
+lo visual (texto dentro de la imagen, estilo, colores) cuenta como entregado; no pidas regenerarla.
 
 Respondé SOLO con JSON válido, sin texto extra:
 {"cumple":true|false,"faltantes":["<lo que falta, concreto>"],"instruccion":"<qué tiene que hacer el agente para completarlo>"}
@@ -419,7 +429,7 @@ const vistos = {};
 // Documentos e informes con gráficos siempre como "compleja" (los modelos locales chicos arman mal los datos)
 const DOC = /\\b(pdf|word|docx|excel|xlsx|planilla|informe|reporte|gr[aá]fico|markdown|documento)s?\\b/i;
 // Búsquedas y navegación web también (encadenan varias llamadas a herramientas)
-const WEB = /\\b(busc[aáeé]\\w*|web|internet|naveg\\w*|captur\\w*|screenshot|sitio|p[aá]gina|precio|cotizaci[oó]n|noticia)s?\\b|https?:\\/\\//i;
+const WEB = /\\b(busc[aáeé]\\w*|web|internet|naveg\\w*|captur\\w*|screenshot|sitio|p[aá]gina|precio|cotizaci[oó]n|noticia|maps?|mapa|ruta|llegar|colectivo|subte|tren|recorrido|imagen|im[aá]genes|foto|ilustraci[oó]n|logo)s?\\b|https?:\\/\\//i;
 return plan.map(p => ({ json: {
   agent: p.agente,
   prompt: p.tarea,

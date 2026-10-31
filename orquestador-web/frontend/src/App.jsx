@@ -14,7 +14,31 @@ const EJEMPLOS = [
 // Links siempre en pestaña nueva
 DOMPurify.addHook('afterSanitizeAttributes', n => {
   if (n.tagName === 'A') { n.setAttribute('target', '_blank'); n.setAttribute('rel', 'noopener'); }
+  if (n.tagName === 'IMG') { n.setAttribute('loading', 'lazy'); n.setAttribute('title', 'Clic para ampliar'); }
 });
+
+// Visor de imágenes: un clic en una imagen de la respuesta la abre ampliada, con descarga
+const verImagen = (src, alt) => dispatchEvent(new CustomEvent('ver-imagen', { detail: { src, alt } }));
+
+function VisorImagen({ img, onCerrar }) {
+  useEffect(() => {
+    const f = e => e.key === 'Escape' && onCerrar();
+    addEventListener('keydown', f);
+    return () => removeEventListener('keydown', f);
+  }, [onCerrar]);
+  const nombre = decodeURIComponent(img.src.split('/').pop() || 'imagen.png');
+  return (
+    <div className="visor" onClick={onCerrar} role="dialog" aria-label="Imagen ampliada">
+      <img src={img.src} alt={img.alt || ''} onClick={e => e.stopPropagation()} />
+      <div className="visor-barra" onClick={e => e.stopPropagation()}>
+        <span className="visor-nombre">{img.alt && !/^imagen generada/.test(img.alt) ? img.alt : nombre}</span>
+        <a className="btn chico" href={img.src + (img.src.includes('?') ? '&' : '?') + 'descargar=1'} download={nombre}>⬇ Descargar</a>
+        <a className="btn chico" href={img.src} target="_blank" rel="noopener">Abrir en otra pestaña</a>
+        <button className="btn chico" onClick={onCerrar}>Cerrar</button>
+      </div>
+    </div>
+  );
+}
 const md = txt => ({ __html: DOMPurify.sanitize(marked.parse(txt || '', { breaks: true })) });
 
 // Versión de este bundle (hash que pone Vite en el nombre del archivo)
@@ -148,7 +172,8 @@ function Mensaje({ m, onReintentar }) {
   }
   return (
     <div className="msg asistente">
-      <div className="markdown" dangerouslySetInnerHTML={md(m.texto.replace(PIE_AGENTES, ''))} />
+      <div className="markdown" dangerouslySetInnerHTML={md(m.texto.replace(PIE_AGENTES, ''))}
+        onClick={e => { if (e.target.tagName === 'IMG') { e.preventDefault(); verImagen(e.target.src, e.target.alt); } }} />
       <div className="meta">
         {m.agentes?.map((a, i) => (
           <span key={i} className={`agente ${a.proveedor || ''}`} title={a.modelo || ''}>
@@ -317,6 +342,12 @@ export default function App() {
   const [menu, setMenu] = useState(false);
   const [editando, setEditando] = useState(false);
   const [verModelos, setVerModelos] = useState(false);
+  const [imagen, setImagen] = useState(null);
+  useEffect(() => {
+    const f = e => setImagen(e.detail);
+    addEventListener('ver-imagen', f);
+    return () => removeEventListener('ver-imagen', f);
+  }, []);
   const [versionNueva, setVersionNueva] = useState(false);
 
   // Si el servidor tiene una versión más nueva de la web, avisar para recargar
@@ -464,6 +495,7 @@ export default function App() {
           <button className="btn chico" onClick={() => setVerModelos(true)} title="Modelos usados y disponibles">🧠 Modelos</button>
         </header>
         {verModelos && <PanelModelos chat={chat} onCerrar={() => setVerModelos(false)} />}
+        {imagen && <VisorImagen img={imagen} onCerrar={() => setImagen(null)} />}
         {versionNueva && (
           <div className="version-nueva">
             Hay una versión nueva de la interfaz.

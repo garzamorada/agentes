@@ -65,7 +65,7 @@ services:
   ollama:
     image: ollama/ollama:${OLLAMA_VERSION:-0.40.13}
     container_name: ollama
-    mem_limit: ${OLLAMA_MEM:-3g}
+    mem_limit: ${OLLAMA_MEM:-6g}
     restart: unless-stopped
     ports:
       - "${BIND_IP:-127.0.0.1}:${OLLAMA_PORT:-11434}:11434"
@@ -76,6 +76,32 @@ services:
       # Bolt (7,9 GB) y Nano (2,8 GB) entran juntos en los 12 GB de la RTX 3060 y atienden en paralelo
       - OLLAMA_MAX_LOADED_MODELS=${OLLAMA_MAX_LOADED_MODELS:-2}
       - OLLAMA_NUM_PARALLEL=${OLLAMA_NUM_PARALLEL:-2}
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+
+  # Generación de imágenes con IA (FLUX.2 klein 4B o SDXL-Lightning) en la GPU; comparte la GPU con Ollama
+  imagen-ia:
+    build: ./imagen-ia
+    image: imagen-ia:1.0
+    container_name: imagen-ia
+    mem_limit: ${IMAGEN_MEM:-6g}
+    restart: unless-stopped
+    ports:
+      - "${BIND_IP:-127.0.0.1}:${IMAGEN_IA_PORT:-8094}:8094"
+    volumes:
+      - imagen_modelos:/modelos
+      - ./documentos_generados:/data
+    environment:
+      - IMAGEN_IA_API_KEY=${IMAGEN_IA_API_KEY:?Falta IMAGEN_IA_API_KEY en .env}
+      - IMAGEN_MODELO=${IMAGEN_MODELO:-flux2-klein}
+      - FLUX_TRANSFORMER=${FLUX_TRANSFORMER:-bf16}
+      - PUBLIC_URL=${DOC_PUBLIC_URL:-http://localhost:8090}
+      - OLLAMA_URL=${OLLAMA_URL:-http://ollama:11434}
     deploy:
       resources:
         reservations:
@@ -118,6 +144,8 @@ services:
       - DOC_SERVICE_API_KEY=${DOC_SERVICE_API_KEY}
       - EVENTOS_URL=${WEB_EVENTOS_URL:-http://orquestador-web:8095/api/eventos}
       - WEB_EVENTOS_TOKEN=${WEB_EVENTOS_TOKEN}
+      - IMAGEN_IA_URL=${IMAGEN_IA_URL:-http://imagen-ia:8094}
+      - IMAGEN_IA_API_KEY=${IMAGEN_IA_API_KEY}
     depends_on:
       - doc-service
 
@@ -147,3 +175,6 @@ volumes:
   # Modelos de Ollama (volumen de Docker: mucho más rápido que una carpeta de Windows para cargarlos en la GPU)
   ollama:
     name: agentes_ollama
+  # Pesos de Stable Diffusion XL / Lightning (~7 GB, se descargan la primera vez)
+  imagen_modelos:
+    name: agentes_imagen_modelos

@@ -92,13 +92,14 @@ def _corregir_links(md):
 
 
 @app.get('/files/{did}/{nombre:path}')
-def archivo(did: str, nombre: str):
+def archivo(did: str, nombre: str, descargar: bool = False):
     f = _resolver_archivo(did, nombre)
     if not f:
         raise HTTPException(404, 'Archivo no encontrado')
     if (f.parent.name, f.name) != (did, nombre):
-        return RedirectResponse(f'/files/{f.parent.name}/{quote(f.name)}', status_code=307)
-    return FileResponse(f)
+        return RedirectResponse(f'/files/{f.parent.name}/{quote(f.name)}' + ('?descargar=1' if descargar else ''), status_code=307)
+    # ?descargar=1 → se baja como archivo (el atributo "download" no funciona entre la web :8095 y este servicio :8090)
+    return FileResponse(f, filename=f.name if descargar else None)
 
 
 @app.get('/health')

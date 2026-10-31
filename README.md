@@ -7,6 +7,7 @@ generador de documentos y una web local con el registro de chats.
 |---|---|---|
 | `n8n/n8n_data` | Datos de n8n: workflows, credenciales (cifradas con la clave de `config`), historial | http://localhost:5678 |
 | `mcp-tools` | Servidor MCP (Python) con todas las herramientas: cálculo, archivos, web (Playwright + Selenium), gráficos e imágenes | http://localhost:8092/mcp |
+| `imagen-ia` | Imágenes con IA: FLUX.2 klein 4B (o SDXL-Lightning) en la GPU; comparte la GPU con Ollama | http://localhost:8094 |
 | `ollama` (contenedor) | Modelos locales con la GPU NVIDIA; los modelos están en el volumen de Docker `agentes_ollama` | http://localhost:11434 |
 | `doc-service` | Genera HTML, PDF, Word, Excel y MD con gráficos y diagramas | http://localhost:8090 |
 | `orquestador-web` | Web local (FastAPI + React): chats, progreso en vivo, modelos | http://localhost:8095 |
@@ -57,6 +58,7 @@ docker exec ollama ollama ps
 | Servicio | Qué protege | Cómo se manda |
 |---|---|---|
 | n8n (webhooks `orquestador`, `agente-especialista`, `estado-modelos`) | `N8N_WEBHOOK_TOKEN` | header `X-API-Key` |
+| imagen-ia (`POST /generar`) | `IMAGEN_IA_API_KEY` | header `X-API-Key` (lo usa el MCP) |
 | mcp-tools (`/mcp`) | `MCP_API_KEY` | `Authorization: Bearer`, `X-API-Key` o `?key=` (n8n lo pone en la URL desde `$env`; en los logs aparece como `key=***`) |
 | doc-service (`POST /documento`) | `DOC_SERVICE_API_KEY` | header `X-API-Key` (las descargas `/files` quedan libres en localhost para abrir los links) |
 | orquestador-web (`/api/*`) | `WEB_ACCESS_TOKEN` | la interfaz la pide al entrar y la manda en `X-API-Key` |
@@ -78,3 +80,16 @@ docker exec ollama ollama ps
 Para cambiarlos: editar `generador/build/*` y correr `python generador/build/gen.py`; los JSON quedan en
 `generador/workflows/` y se importan pegándolos en n8n (después de pegar el agente, revisar que el selector de
 modelo, la memoria y el nodo MCP sigan conectados al nodo del agente y publicar).
+
+## Imágenes con IA (`imagen-ia`)
+
+- Modelo por defecto: **FLUX.2 [klein] 4B** de Black Forest Labs (Apache 2.0), con el text encoder Qwen3-4B en 4 bits (NF4)
+  y el transformer en bf16 para que entre en los 12 GB de la RTX 3060. Pesos (~16 GB) en el volumen `agentes_imagen_modelos`.
+- Velocidad en la RTX 3060: ~17 s por imagen de 1024×1024 con el modelo cargado; cargarlo desde el disco tarda ~1,5 min.
+  Varias imágenes se generan de a una (juntas desbordan la VRAM).
+- Escribe bien textos cortos dentro de la imagen (carteles, títulos de pocas palabras).
+- Alternativa más liviana y rápida (~4 s, peor calidad y sin texto): `IMAGEN_MODELO=sdxl-lightning` en `.env`.
+  Si la VRAM no alcanza: `FLUX_TRANSFORMER=nf4`.
+- Comparte la GPU con Ollama: antes de cargar le pide que libere sus modelos y, tras 3 minutos sin uso, libera la VRAM.
+- Los modelos "Downloadable" de build.nvidia.com (contenedores NIM) piden GPUs RTX 40/50 o superiores: no corren en la RTX 3060;
+  FLUX.2 klein se usa con sus pesos abiertos de Hugging Face y `diffusers`.

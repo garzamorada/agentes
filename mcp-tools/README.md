@@ -23,6 +23,8 @@ al de "Generar documento" y al navegador web.
 | `navegador` | Chromium real: abrir, leer, clic, escribir, **completar** (formularios de varios campos), **extraer** (BeautifulSoup: tablas, listas, enlaces, títulos, campos, metadatos o selector CSS), tecla, desplazar, captura, atrás, cerrar. Dos motores: `playwright` (por defecto) y `selenium` (respaldo) |
 | `crear_grafico` | Gráfico PNG/SVG: barras, horizontales, apiladas, línea, área, torta, dona, dispersión, histograma, mapa de calor (lo dibuja doc-service) |
 | `crear_diagrama` | Diagramas visuales (flujos, organigramas, arquitecturas) en PNG/SVG |
+| `generar_imagen` | Imágenes nuevas con IA (fotos, ilustraciones, logos) vía el servicio `imagen-ia` |
+| `como_llegar` | Rutas de Google Maps: colectivo/subte/tren, auto, a pie o bici, con el detalle de la mejor opción |
 | `crear_imagen` | Portadas, banners y placas con texto (Pillow, sin IA) |
 | `editar_imagen` | Redimensionar, recortar, texto, collage, convertir, rotar, grises, borde |
 

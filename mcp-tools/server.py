@@ -8,6 +8,7 @@ La sesión del navegador sale del parámetro ?sesion= de la URL (n8n pone el id 
 así cada agente mantiene su pestaña entre llamadas.
 """
 import asyncio
+import urllib.parse
 import json
 import logging
 import os
@@ -29,6 +30,8 @@ import imagenes
 DOC_SERVICE = os.environ.get('DOC_SERVICE', 'http://doc-service:8090/documento')
 DOC_SERVICE_API_KEY = os.environ.get('DOC_SERVICE_API_KEY', '')
 WEB_EVENTOS_TOKEN = os.environ.get('WEB_EVENTOS_TOKEN', '')
+IMAGEN_IA_URL = os.environ.get('IMAGEN_IA_URL', 'http://imagen-ia:8094').rstrip('/')
+IMAGEN_IA_API_KEY = os.environ.get('IMAGEN_IA_API_KEY', '')
 # Clave de acceso al MCP (Authorization: Bearer <clave>, X-API-Key o ?key=). Sin clave el servidor no arranca.
 MCP_API_KEY = os.environ.get('MCP_API_KEY', '')
 if not MCP_API_KEY:
@@ -67,7 +70,8 @@ def _resumen_args(nombre: str, args: dict) -> str:
     claves = {'calculadora': ['expresion'], 'buscar_web': ['consulta'], 'navegador': ['motor', 'accion', 'url', 'objetivo', 'texto', 'campos'],
               'leer_url': ['url'], 'convertir_unidades': ['valor', 'de', 'a'], 'generar_documento': ['titulo', 'formatos'],
               'fecha_hora': [], 'tabla': ['formato'], 'crear_grafico': ['formatos'], 'crear_diagrama': ['formatos'],
-              'crear_imagen': ['titulo'], 'editar_imagen': ['operacion', 'imagenes']}.get(nombre, list(args)[:2])
+              'crear_imagen': ['titulo'], 'editar_imagen': ['operacion', 'imagenes'],
+              'generar_imagen': ['prompt', 'cantidad'], 'como_llegar': ['origen', 'destino', 'modo']}.get(nombre, list(args)[:2])
     partes = [str(args[k])[:60] for k in claves if args.get(k) not in (None, '', False)]
     return ', '.join(partes)
 
@@ -272,6 +276,66 @@ async def editar_imagen(imagenes_urls: str, operacion: str, parametros: str = ''
     - "borde": {"grosor": 12, "color": "#ffffff"}
     Todas aceptan "formato" (png, jpg, webp) y "nombre" para el archivo de salida."""
     return (await imagenes.editar(imagenes_urls, operacion, parametros))['resultado']
+
+
+@mcp.tool()
+async def generar_imagen(prompt: str, ancho: int = 1024, alto: int = 1024, cantidad: int = 1, negativo: str = '',
+                         semilla: int = -1) -> str:
+    """Genera imágenes NUEVAS con IA (FLUX.2 klein 4B, en la GPU local): fotos, ilustraciones, logos, fondos,
+    personajes, escenas, arte conceptual. Usala siempre que pidan "generá/creá/dibujá una imagen de…".
+    - prompt: descripción detallada EN INGLÉS (sujeto, estilo, luz, encuadre, colores). Ej: "a cozy coffee shop in
+      Buenos Aires at sunset, watercolor illustration, warm light, detailed".
+    - ancho/alto: hasta ~1 megapíxel: 1024x1024 cuadrada, 1216x832 apaisada, 832x1216 vertical (más grande se achica).
+    Llamala UNA vez por imagen pedida; no la repitas para "mejorarla" salvo que el usuario lo pida.
+    - cantidad: 1 a 4 variantes. negativo: lo que NO debe aparecer (en inglés). semilla: -1 = al azar.
+    Puede escribir textos CORTOS dentro de la imagen (1 a 4 palabras: carteles, títulos, logos) si los ponés entre comillas
+    en el prompt, por ejemplo: a bus whose destination sign reads "SAN TELMO". Para textos largos usá crear_imagen.
+    No sirve para gráficos de datos (crear_grafico). Tarda ~17 s por imagen; si el modelo no estaba cargado, ~1,5 min más."""
+    cuerpo = {'prompt': prompt, 'ancho': ancho, 'alto': alto, 'cantidad': max(1, min(int(cantidad), 4)), 'negativo': negativo}
+    if int(semilla) >= 0:
+        cuerpo['semilla'] = int(semilla)
+    try:
+        async with httpx.AsyncClient(timeout=900) as c:
+            r = await c.post(f'{IMAGEN_IA_URL}/generar', headers={'X-API-Key': IMAGEN_IA_API_KEY}, json=cuerpo)
+        d = r.json()
+    except (httpx.HTTPError, ValueError) as e:
+        return f'El generador de imágenes no respondió ({e}). Probá de nuevo en un momento.'
+    if r.status_code >= 400:
+        return f'Error al generar la imagen: {str(d.get("detail") or d)[:300]}'
+    imgs = '\n'.join(f'![imagen generada {i}]({a["url"]})' for i, a in enumerate(d['archivos'], 1))
+    links = '\n'.join(f'- [{a["nombre"]}]({a["url"]})' for a in d['archivos'])
+    return (f'{len(d["archivos"])} imagen(es) generada(s) con {d["modelo"]} ({d["ancho"]}×{d["alto"]}, semilla {d["semilla"]}, '
+            f'{d["segundos"]} s). Mostralas en tu respuesta tal cual:\n{imgs}\nDescargas:\n{links}')
+
+
+MODOS_MAPS = {'colectivo': 'transit', 'transporte': 'transit', 'transporte publico': 'transit', 'transporte público': 'transit',
+              'subte': 'transit', 'tren': 'transit', 'bus': 'transit', 'transit': 'transit', 'auto': 'driving', 'coche': 'driving',
+              'driving': 'driving', 'a pie': 'walking', 'caminando': 'walking', 'pie': 'walking', 'walking': 'walking',
+              'bici': 'bicycling', 'bicicleta': 'bicycling', 'bicycling': 'bicycling'}
+
+
+@mcp.tool()
+async def como_llegar(origen: str, destino: str, modo: str = 'colectivo', ctx: Context = None) -> str:
+    """Cómo llegar de un lugar a otro con Google Maps: opciones de recorrido, líneas de colectivo/subte/tren,
+    tiempos, frecuencia y paradas. Usala para "cómo llego…", "qué colectivo me lleva…", "cuánto tardo en auto…".
+    origen y destino: direcciones o esquinas con ciudad (ej: "Carlos Calvo y Av. Entre Ríos, CABA").
+    modo: "colectivo" (transporte público: colectivo, subte, tren), "auto", "a pie" o "bici".
+    Devuelve las opciones de Google Maps y el detalle paso a paso de la primera, más el link para abrirlo."""
+    m = MODOS_MAPS.get(str(modo).strip().lower(), 'transit')
+    q = urllib.parse.urlencode({'api': 1, 'origin': origen, 'destination': destino, 'travelmode': m})
+    url = f'https://www.google.com/maps/dir/?{q}'
+    sesion = f'maps-{_sesion(ctx) if ctx else "default"}'
+    r = await nav.accion(nav.Pedido(accion='abrir', sesion=sesion, url=url, max_chars=5000))
+    if not r.get('ok'):
+        return r['resultado'] + f'\nLink para abrirlo vos: {url}'
+    texto = r['resultado'].split('Elementos para interactuar')[0]
+    detalle = ''
+    if m == 'transit':
+        d = await nav.accion(nav.Pedido(accion='clic', sesion=sesion, objetivo='Detalles', max_chars=5000))
+        if d.get('ok'):
+            detalle = '\n\nDETALLE DE LA PRIMERA OPCIÓN (paso a paso):\n' + d['resultado'].split('Texto de la página:')[-1].split('Elementos para interactuar')[0]
+    return (f'Google Maps — de "{origen}" a "{destino}" ({modo}). Horarios y frecuencias son los de ahora.\n'
+            f'{texto.strip()}{detalle.rstrip()}\n\nLink para el usuario: {url}')
 
 
 # ---------- web ----------
